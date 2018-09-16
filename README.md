@@ -1,9 +1,9 @@
 # mayushii
 A feature rich discord bot
 
-#To install
+## To install
 
-Clone to desired folder
-Install discord.io with npm
-Enter discord bot token in auth.json
-Run bot.js with node.js
+* Clone to desired folder
+* Install discord.io with npm
+* Enter discord bot token in auth.json
+* Run bot.js with node.js
