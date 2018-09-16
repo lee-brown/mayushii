@@ -34,6 +34,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     var serverID = bot.channels[channelID].guild_id;
     var args = message.substring(1).split(' ');
     var command = args[0];
+    var argsString = message.substring(1).split(command + " ")[1]; //Full message string without the command
     var collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
     args = args.splice(1); 
 
@@ -59,7 +60,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     logger.warn("Failed to find image");
                 });
         }
-        function removeSpaces(item){
+        function removeSpaces(item){ //Simply finds and removes spaces from a string
             item = item.replace(/\s/g, ''); 
             return item;
         }
@@ -202,12 +203,65 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             
         }); 
         }
+        else if (command === "vote"){
+            var avatar = "";
+            var username = "";
+            avatar = "https://cdn.discordapp.com/avatars/" + userID + "/" + bot.users[userID].avatar + ".png?size=128";
+            username = bot.users[userID].username;
+            var richembed = {
+                "color": 15277667,
+                "fields": [
+                    {
+                        "name": "Tuturuu~ a vote has begun",
+                        "value": argsString,
+                        "inline": true
+                    }
+                ],
+                "footer": {
+                    "icon_url": avatar,
+                    "text": username
+                  }
+            }
+            //This callback mess is mostly due to discords rate limiting, 
+            //it first attempts to send two reactions at once, one will inevitbily fail
+            //so we then read the response for the time to wait
+            //once the time is up it sends the other reaction
+            //the wait time changes so it should not be hardcoded - more info here https://discordapp.com/developers/docs/topics/rate-limits#header-format
+                bot.sendMessage({ 
+                    to: channelID,
+                    embed: richembed
+                }, function(err, data){
+                    bot.addReaction({
+                        channelID: channelID,
+                        messageID: data.id,
+                        reaction: "❎"},
+                        function(err, data2){
+                            bot.addReaction({
+                                channelID: channelID,
+                                messageID: data.id,
+                                reaction: "☑"
+                        },function(err, data2){
+                            if(err){
+                                setTimeout(function(str1, str2) { 
+                                    bot.addReaction({
+                                        channelID: str1,
+                                        messageID: str2,
+                                        reaction: "☑",})
+                                    }, err.response["retry_after"], channelID, data.id);
+                            }
+                        });
+                    }
+                );
+                
+            });
+            
+        }
         else if(command === "help-customcmd"){
             var customCmdsLines = [
                 "Use '&' to add multiple tags/message",
                 "``!newcmd`` **Create a new custom command**",
                 "<cmd-name> | <tag> *&<tag2>* | <message> *&<message2>*",
-                "``!updatecmd-message`` **and** ``!updatecmd-tag`` **Replace the tags/message**",
+                "``!updatecmd-text`` **and** ``!updatecmd-tag`` **Replace the tags/message**",
                 "<cmd-id> | <tag> *&<tag2>* ",
                 "``!updatecmd`` **Replace an entire command with new values**",
                 "<id> | <tag> *&<tag2>* | <message> *&<message2>*",
@@ -248,8 +302,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         else if(command === 'say'){
             //Check if text contains a command (only admins should have the power to do this)
             if(args[0] !== undefined){
-                containscommand = args[0].replace(/\s/g, '');
-                if(containscommand[0][0].replace(/\s/g, '') === '!'){
+                containscommand = removeSpaces(args[0]);
+                if(removeSpaces(containscommand[0][0]) === '!'){
                     containscommand = true;
                 }
             }
@@ -561,24 +615,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         dbo.collection(collectionName).find(query).toArray(function(err, result) {
                             if (err) throw err;
                             try{
-                                var argstring = message.substring(1);
-                                if(request === "tags"){
-                                    argstring = message.split("!updatecmd-tag ");
-                                }
-                                else{
-                                    argstring = message.split("!updatecmd-text ");
-                                }
-                                argstring = argstring[1];
-                                argstring = argstring.split('|');
-                                argstring = argstring[1]; //<tags>
+                                argsString = argsString.split('|');
+                                argsString = argsString[1]; //<tags>
                                 var tagsArray = undefined;
                                 var textArray = undefined;
-                                if(argstring !== undefined){
-                                    if(request === "tags"){
-                                        textArray = removeSpaces(argstring).split('&'); //Allows for multiple texts or tags to be put in at once
+                                if(argsString !== undefined){
+                                    if(request === "tag"){
+                                        textArray = removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
                                     }
                                     else{
-                                        tagsArray = argstring.split('&'); //Allows for multiple texts or tags to be put in at once
+                                        tagsArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
                                     }
                                 }
                                 if(request === "tag"){
@@ -620,17 +666,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         dbo.collection(collectionName).find(query).toArray(function(err, result) {
                             if (err) throw err;
                             try{
-                                var argstring = message.substring(1);
-                                argstring = message.split("!updatecmd ");
-                                argstring = argstring[1];
-                                argstring = argstring.split('|');
+                                argsString = argsString.split('|');
                                 var tagsArray = undefined;
                                 var textArray = undefined;
-                                if(argstring[1] !== undefined){
-                                    tagsArray = removeSpaces(argstring[1]).split('&'); //Allows for multiple texts or tags to be put in at once
+                                if(argsString[1] !== undefined){
+                                    tagsArray = removeSpaces(argsString[1]).split('&'); //Allows for multiple texts or tags to be put in at once
                                 }
-                                if(argstring[2] !== undefined){
-                                    textArray = argstring[2].split('&');
+                                if(argsString[2] !== undefined){
+                                    textArray = argsString[2].split('&');
                                 }
                                 var newvalues = { $set: {tags: tagsArray, texts: textArray}}; //update tags
                                 dbo.collection(collectionName).updateOne(query, newvalues, function(err, res) {
@@ -675,26 +718,22 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         try{
                             dbo.collection(collectionName).find(query).toArray(function(err, result) {
                                 if (err) throw err;
-                                var argstring = message.substring(1);
                                 var ogitems;
-                                if(request === "tags"){
-                                    argstring = message.split("!add-tag ");
+                                if(request === "tag"){
                                     ogitems = result[0].tags;
                                 }
                                 else{
-                                    argstring = message.split("!add-text ");
                                     ogitems = result[0].texts;
                                 }
-                                argstring = argstring[1];
-                                argstring = argstring.split('|');
-                                argstring = argstring[1]; //<item-to-add>
+                                argsString = argsString.split('|');
+                                argsString = argsString[1]; //<item-to-add>
                                 var itemsArray = undefined;
-                                if(argstring !== undefined){//Add array of user items
-                                    if(request === "tags"){
-                                        itemsArray = removeSpaces(argstring).split('&'); //Allows for multiple texts or tags to be put in at once
+                                if(argsString !== undefined){//Add array of user items
+                                    if(request === "tag"){
+                                        itemsArray = removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
                                     }
                                     else{
-                                        itemsArray = argstring.split('&'); //Allows for multiple texts or tags to be put in at once
+                                        itemsArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
                                     }
                                 }
                                 for(i = 0; i < ogitems.length; i++){ //Add array of original items
