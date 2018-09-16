@@ -1,7 +1,7 @@
 {
   "name": "greeter-bot",
   "version": "1.0.0",
-  "description": "My First Discord Bot",
+  "description": "Mayushii Discord Bot",
   "main": "bot.js",
   "author": "Catlee",
   "dependencies": {

@@ -1,6 +1,12 @@
+//Note: In order to make the code as readable as possible there is a lot of code that do similar things,
+//in future versions this code can be compressed with the same functionality but with less lines of code
+//The bot only works with mongodb and only works with the szurubooru api, (websites like nekobooru.xyz)
+
+//Dependencies 
 var Discord = require('discord.io');
 var logger = require('winston');
 var auth = require('./auth.json');
+var authnekobooru = require('./auth-nekobooru.json');
 const axios = require('axios');
 var Promise = require("bluebird");
 const fs = require('fs');
@@ -22,17 +28,16 @@ bot.on('ready', function (evt) {
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
-    
-
 });
 bot.on('message', function (user, userID, channelID, message, evt) {
-
+    var nekobooruToken = "Token " + authnekobooru.token;
     var serverID = bot.channels[channelID].guild_id;
     var args = message.substring(1).split(' ');
     var command = args[0];
     var collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
     args = args.splice(1); 
 
+    //Create initial database if database for serverID doesn't already exist
     var MongoClient = mongo.MongoClient;
     var url = "mongodb://localhost:27017/";
     MongoClient.connect(url, function(err, db) {
@@ -43,19 +48,15 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         db.close();
     });
     });
-
-    var nekoimages = ["confused", "angry", "caesar", "fbi", "pout", "slap", "smug", "dance", "sleepy", "confused", "triggered", "lewd", "fite", "panic", "flee", "baited", "capitalism", "laughing", "wut", "tooloud", "excited", "niceattempt"];
-        
     if (message.substring(0, 1) === '!') {
         getRandomNekoImg = function(tags){ //REST get request to nekobooru using axios
             axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + ",image" + ",anim", {},{
                 })
                 .then(response =>{ 
                     createEmbed(response);
-                        
                     })
                 .catch(err =>{
-                    //logger.error(err);
+                    logger.warn("Failed to find image");
                 });
         }
         function removeSpaces(item){
@@ -102,12 +103,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 var data = dataFromFile.toString();
                 var items = data.split('\n');
                 for(j = 0; j < items.length; j++){
-                    if(items[j] == user){
-                        permission = true;
-                    }
-                    else{
-                        console.log(items[j] + " not equal to " + user);
-                    }
+                    permission = true;
                 }
             }
             if(permission){
@@ -122,7 +118,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 return false;
             }
         }
-        function addUserId(originaltext, target){
+        function addUserId(originaltext, target){ //Replaces @user and @target with actual target and user tags
             newtext = originaltext.replace("@user", "<@!" + userID + ">");
             if(args[0] !== undefined){
                 newtext = newtext.replace("@target", target);
@@ -131,59 +127,123 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         }
         if(command === 'help')
         {
-            var nekoimagesstring = "";
-            for(i = 0; i < nekoimages.length; i++){
-                nekoimagesstring = nekoimagesstring + " ``!" + nekoimages[i] + "`` ";
+            MongoClient.connect(url, function(err, db) {
+                if (err) throw err;
+                var dbo = db.db("mydb");
+                    dbo.collection(collectionName).find({}, { projection: { _id: 0, cmd: 1} }).toArray(function(err, result) {
+                        if (err) throw err;
+                        var listofCmds = "";
+                        for(i = 0; i<result.length; i++){
+                            listofCmds = listofCmds + "``!" + result[i].cmd + "`` ";
+                        }
+                        
+                        var nekobooruLines = [
+                            "``!tag`` **Returns random image with given tag(s)**",
+                            "!tag <tag> *<tag2>*",
+                            "``!upload`` **Upload from a given URL with certain tag(s)**",
+                            "!upload <url> <tag> *<tag2>*",
+                            "``!newtag`` **Create tag and its aliases (Default category)**",
+                            "!tag <tag> *<tag-alias>*",
+                            "``!newcategorytag`` **Same as above but can specify category**",
+                            "!newcategorytag <tag-category> <tag> *<tag2>*"
+                        ]
+                        var nekobooruString = "";
+                        for(i = 0; i < nekobooruLines.length; i++){
+                            nekobooruString = nekobooruString + nekobooruLines[i] + "\n";
+                        }
+                        var richembed = {
+                            "title": "Tuturuu~ Here is a list of commands",
+                            "color": 15277667,
+                            "thumbnail": {
+                              "url": "https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png"
+                            },
+                            "fields": [
+                              {
+                                    "name": "Image and message commands",
+                                    "value": "These commands create a message or image or both. New commands can be created from discord chat (check the custom commands section) \n" + listofCmds,
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Nekobooru commands (Anything in *italics* is optional)",
+                                    "value": nekobooruString,
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Fun commands",
+                                    "value": "``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny``",
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Custom commands",
+                                    "value": "Create image and message commands. If multiple commands have the same name a random command with that name will be chosen. Same goes for commands with multiple messages. \n``!help-customcmd`` **Shows help for custom commands**",
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Permissions (!add-admin <tagged-user>)",
+                                    "value": "``!add-admin`` ``!add-poweruser``",
+                                    "inline": true
+                                },
+                                {
+                                    "name": "Other",
+                                    "value": "``!suggest`` **Suggest improvements or features to Mayuri**",
+                                    "inline": true
+                                }
+                            ]
+                        }
+                      bot.sendMessage({
+                          to: channelID,
+                          embed: richembed
+                      });
+                      logger.info("Help command printed");
+
+
+                        db.close();
+                    });
+            
+        }); 
+        }
+        else if(command === "help-customcmd"){
+            var customCmdsLines = [
+                "Use '&' to add multiple tags/message",
+                "``!newcmd`` **Create a new custom command**",
+                "<cmd-name> | <tag> *&<tag2>* | <message> *&<message2>*",
+                "``!updatecmd-message`` **and** ``!updatecmd-tag`` **Replace the tags/message**",
+                "<cmd-id> | <tag> *&<tag2>* ",
+                "``!updatecmd`` **Replace an entire command with new values**",
+                "<id> | <tag> *&<tag2>* | <message> *&<message2>*",
+                "``!add-tag`` **and** ``!add-text`` **add tags/message to an existing cmd**",
+                "<id> | <item> *&<item2>*",
+                "``!del-tag`` **and** ``!del-message`` **Delete specific tag/message in existing cmd**",
+                "<id> <index>",
+                "``cmd-details`` **Details of a specific cmd**",
+                "<cmd-id>",
+                "``!deletecmd`` **delete a specific cmd**",
+                "<cmd-id>",
+                "``!lscmdname`` **list all cmds with the same cmd name (gives cmd-ids)**",
+                "<cmd-name>"
+            ]
+            var customCmdsString = "";
+            for(i = 0; i < customCmdsLines.length; i++){
+                customCmdsString = customCmdsString + customCmdsLines[i] + "\n";
             }
             var richembed = {
-                "title": "Tuturuu~ Here is a list of commands",
+                "title": "Tuturuu~ Here is how you can create commands",
                 "color": 15277667,
                 "thumbnail": {
                   "url": "https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png"
                 },
                 "fields": [
-                  {
-                      "name": "Nekobooru reactions (e.g !smug)",
-                      "value": nekoimagesstring,
-                      "inline": true
-                    },
-                    {
-                        "name": "Created custom commands",
-                        "value": "``undefined``",
-                        "inline": true
-                      },
-                    {
-                      "name": "Nekobooru user interactions (e.g !slap @Mayuri)",
-                      "value": "``!slap`` ``!pat``",
-                      "inline": true
-                    },
-                    {
-                      "name": "Nekobooru commands (Anything in *italics* is optional)",
-                      "value": "``!tag`` **Returns random image with given tag(s)**\n !tag <tag> *<tag2>* \n``!upload`` **Upload from a given URL with certain tag(s)**\n!upload <url> <tag> *<tag2>* \n``!newtag`` **Create tag and its aliases (Default category)**\n!tag <tag> *<tag-alias>*\n ``!newcategorytag`` **Same as above but can specify category**\n!newcategorytag <tag-category> <tag> *<tag2>*",
-                      "inline": true
-                    },
-                    {
-                      "name": "Mayuri commands",
-                      "value": "``!suggest`` - Suggest improvements or features to Mayuri \n ``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny``",
-                      "inline": true
-                    },
                     {
                         "name": "Custom command creation",
-                        "value": "``!newcommand`` Create a new custom command (dont forget |) \n !newcommand <command-name> | <tag(s)> | <text> \n``!editcommandtag`` Replace tag of custom command \n !editcommandtag <command-name> <id> <new-tag> \n ``!editcommandtext`` Replace text of custom command \n !editcommandtext <command-name> <id> <new-text> \n ``!deletecommand`` Delete custom commands, use !listcommands to find id \n !deletecommand <command-name> <id> \n ``!listcommands`` Lists all commands with a certain command name \n !listcommands <command-name> \n ``!listallcommands`` - Lists all custom commands",
+                        "value": customCmdsString,
                         "inline": true
-                    },
-                    {
-                    "name": "Permissions (!add-admin <tagged-user>)",
-                    "value": "``!add-admin`` ``!add-poweruser``",
-                    "inline": true
                     }
                 ]
             }
-          bot.sendMessage({
-              to: channelID,
-              embed: richembed
-          });
-          logger.info("Help command printed");
+            bot.sendMessage({
+                to: channelID,
+                embed: richembed
+            });
         }
         else if(command === 'say'){
             //Check if text contains a command (only admins should have the power to do this)
@@ -370,6 +430,24 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
               }); 
         }
+        else if (command === 'lsallcmdnames'){
+            MongoClient.connect(url, function(err, db) {
+            if (err) throw err;
+            var dbo = db.db("mydb");
+                dbo.collection(collectionName).find({}, { projection: { _id: 0, cmd: 1} }).toArray(function(err, result) {
+                    if (err) throw err;
+                    var finalmessage = "";
+                    for(i = 0; i<result.length; i++){
+                        finalmessage = finalmessage + "``!" + result[i].cmd + "`` ";
+                    }
+                    bot.sendMessage({
+                        to: channelID,
+                        message: finalmessage
+                    });
+                    db.close();
+                });
+            }); 
+        }
         else if(command === 'upload'){
                 if(args[0] === undefined || args[1] === undefined){
                     bot.sendMessage({
@@ -389,7 +467,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         contentUrl: args[0]
                     },{
                             headers:{
-                                'Authorization': 'Token enRzYm90OjA1MzA3MTkyLWVkODEtNGM5My1iOTAxLWI2MjA4NTgzNjNkNQ==',
+                                'Authorization': nekobooruToken,
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',     
                             },    
@@ -445,7 +523,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         category: 'Default'
                     },{
                             headers:{
-                                'Authorization': 'Token enRzYm90OjA1MzA3MTkyLWVkODEtNGM5My1iOTAxLWI2MjA4NTgzNjNkNQ==',
+                                'Authorization': nekobooruToken,
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',     
                             },    
@@ -840,7 +918,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         category: args[0]
                     },{
                             headers:{
-                                'Authorization': 'Token enRzYm90OjA1MzA3MTkyLWVkODEtNGM5My1iOTAxLWI2MjA4NTgzNjNkNQ==',
+                                'Authorization': nekobooruToken,
                                 'Content-Type': 'application/json',
                                 'Accept': 'application/json',     
                             },    
