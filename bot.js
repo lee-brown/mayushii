@@ -905,7 +905,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
                     var dbo = db.db("mayushii");
-                    var myquery = { _id: args[0] };
+                    var id = ObjectId(removeSpaces(args[0]));
+                    var myquery = { _id: id };
                     dbo.collection(collectionName).deleteOne(myquery, function(err, obj) {
                       if (err) throw err;
                       bot.sendMessage({
