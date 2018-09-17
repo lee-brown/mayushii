@@ -1,4 +1,4 @@
-//Note: In order to make the code as readable as possible there is a lot of code that do similar things,
+//Note: In order to make the code as readable as possible there is a lot of code that does similar things as each other,
 //in future versions this code can be compressed with the same functionality but with less lines of code
 //The bot only works with mongodb and only works with the szurubooru api, (websites like nekobooru.xyz)
 
@@ -6,6 +6,7 @@
 var Discord = require('discord.io');
 var logger = require('winston');
 var auth = require('./auth.json');
+var defaultCommands = require('./default-commands.json');
 var authnekobooru = require('./auth-nekobooru.json');
 const axios = require('axios');
 var Promise = require("bluebird");
@@ -42,12 +43,50 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     var MongoClient = mongo.MongoClient;
     var url = "mongodb://localhost:27017/";
     MongoClient.connect(url, function(err, db) {
-    if (err) throw err;
-    var dbo = db.db("mydb");
-    dbo.createCollection(collectionName, function(err, res) {
         if (err) throw err;
-        db.close();
-    });
+        var dbo = db.db("mayushii");
+        dbo.createCollection(collectionName, function(err, res) {
+            if (err) throw err;
+            db.close();
+        });
+        function action(i){
+            var singlecommand = defaultCommands.cmds[i];
+            var query = { cmd: singlecommand.cmd, tags: singlecommand.tags, texts: singlecommand.texts };
+            return new Promise(function(res, rej) {
+                MongoClient.connect(url, function(err, db) {
+                    if (err) throw err;
+                    var dbo = db.db("mayushii");
+                    dbo.collection(collectionName).find(query).toArray(function(err, result) {
+                        if (err) throw err;
+                        if(result.length === 0){
+                            db.close();
+                            res(1);
+                        }
+                        else{
+                            db.close();
+                            res(0);
+                        }
+                    });
+                })
+            }).then(function(notexists) {
+                MongoClient.connect(url, function(err, db) {
+                    if (err) throw err;
+                    var dbo = db.db("mayushii");
+                    if(notexists === 1){
+                        dbo.collection(collectionName).insertOne(query, function(err, res) {
+                            console.log("1 document inserted");
+                            db.close();
+                        });
+                    }
+                });
+            }).catch({code: "oh boy"}, function(err) {
+                console.log(err);
+            });
+        }
+        //Insert default commands if they dont already exist
+        for(i = 0; i < defaultCommands.cmds.length; i++){
+            action(i);
+        }
     });
     if (message.substring(0, 1) === '!') {
         getRandomNekoImg = function(tags){ //REST get request to nekobooru using axios
@@ -130,7 +169,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         {
             MongoClient.connect(url, function(err, db) {
                 if (err) throw err;
-                var dbo = db.db("mydb");
+                var dbo = db.db("mayushii");
                     dbo.collection(collectionName).find({}, { projection: { _id: 0, cmd: 1} }).toArray(function(err, result) {
                         if (err) throw err;
                         var listofCmds = "";
@@ -171,7 +210,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 },
                                 {
                                     "name": "Fun commands",
-                                    "value": "``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny``",
+                                    "value": "``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny`` ``!vote``",
                                     "inline": true
                                 },
                                 {
@@ -196,8 +235,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                           embed: richembed
                       });
                       logger.info("Help command printed");
-
-
                         db.close();
                     });
             
@@ -225,7 +262,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             //This callback mess is mostly due to discords rate limiting, 
             //it first attempts to send two reactions at once, one will inevitbily fail
             //so we then read the response for the time to wait
-            //once the time is up it sends the other reaction
+            //once the time is up it sends the reaction again
             //the wait time changes so it should not be hardcoded - more info here https://discordapp.com/developers/docs/topics/rate-limits#header-format
                 bot.sendMessage({ 
                     to: channelID,
@@ -252,9 +289,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                     }
                 );
-                
             });
-            
         }
         else if(command === "help-customcmd"){
             var customCmdsLines = [
@@ -476,7 +511,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     textArray = argstring[2].split('&');
                 }
                 thingToPass = {cmd: argstring[0], tags: tagsArray, texts: textArray };
-                var dbo = db.db("mydb");
+                var dbo = db.db("mayushii");
                 dbo.collection(collectionName).insertOne(thingToPass, function(err, res) {
                   if (err) throw err;
                   console.log("1 document inserted");
@@ -487,7 +522,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         else if (command === 'lsallcmdnames'){
             MongoClient.connect(url, function(err, db) {
             if (err) throw err;
-            var dbo = db.db("mydb");
+            var dbo = db.db("mayushii");
                 dbo.collection(collectionName).find({}, { projection: { _id: 0, cmd: 1} }).toArray(function(err, result) {
                     if (err) throw err;
                     var finalmessage = "";
@@ -608,7 +643,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                     }
                     else{
-                        var dbo = db.db("mydb");
+                        var dbo = db.db("mayushii");
                         var id = ObjectId(removeSpaces(args[0]));
                         var query = { _id: id };
                         var request = command.split('-')[1];
@@ -660,7 +695,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                     }
                     else{
-                        var dbo = db.db("mydb");
+                        var dbo = db.db("mayushii");
                         var id = ObjectId(removeSpaces(args[0]));
                         var query = { _id: id };
                         dbo.collection(collectionName).find(query).toArray(function(err, result) {
@@ -696,7 +731,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if (command === "add-tag" || command === "add-text"){ // <id> | <item-to-add> 
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
-                    var dbo = db.db("mydb");
+                    var dbo = db.db("mayushii");
                     try{
                         var id = ObjectId(removeSpaces(args[0]));
                     }
@@ -765,7 +800,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if (command === "del-tag" || command === "del-text"){ // <id> <tag/texts-index> 
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
-                    var dbo = db.db("mydb");
+                    var dbo = db.db("mayushii");
                     try{
                         var id = ObjectId(removeSpaces(args[0]));
                     }
@@ -819,7 +854,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if (command === "cmd-details"){ //<cmd-id>
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
-                    var dbo = db.db("mydb");
+                    var dbo = db.db("mayushii");
                     try {
                         var id = ObjectId(removeSpaces(args[0]));
                         var query = { "_id" : id };
@@ -869,7 +904,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if (command === "deletecmd"){ //<cmd-id>
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
-                    var dbo = db.db("mydb");
+                    var dbo = db.db("mayushii");
                     var myquery = { _id: args[0] };
                     dbo.collection(collectionName).deleteOne(myquery, function(err, obj) {
                       if (err) throw err;
@@ -884,7 +919,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === "lscmdname"){ //list cmds with the name <cmd-name>
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
-                    var dbo = db.db("mydb");
+                    var dbo = db.db("mayushii");
                     commandToQuery = removeSpaces(args[0]);
                     var query = { cmd: commandToQuery };
                     dbo.collection(collectionName).find(query).toArray(function(err, result) {
@@ -982,7 +1017,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 try{
                     MongoClient.connect(url, function(err, db) { //!<cmd>
                         if (err) throw err;
-                        var dbo = db.db("mydb");
+                        var dbo = db.db("mayushii");
                         var commandToQuery = removeSpaces(command);
                         var query = { cmd: commandToQuery };
                         dbo.collection(collectionName).find(query).toArray(function(err, result) {

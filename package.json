@@ -1,9 +1,21 @@
 {
-  "name": "greeter-bot",
-  "version": "1.0.0",
-  "description": "Mayushii Discord Bot",
+  "name": "mayushii",
+  "version": "0.2.0",
+  "description": "Mayushii - A feature rich Discord Bot",
+  "keywords": [
+    "discord bot",
+    "discord",
+    "bot",
+    "mayuri",
+    "mayushiii"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lee-brown/mayushii"
+  },
   "main": "bot.js",
   "author": "Catlee",
+  "license": "GPL-3.0",
   "dependencies": {
     "axios": "^0.18.0",
     "binarysearch": "^1.0.0",

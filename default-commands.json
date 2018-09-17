@@ -1,0 +1,22 @@
+{
+"cmds": [
+    {"cmd":"pout","tags":"pout"},
+    {"cmd":"confused","tags":"confused"},
+    {"cmd":"angry","tags":"angry"},
+    {"cmd":"slap","tags":"slap"},
+    {"cmd":"smug","tags":"smug"},
+    {"cmd":"dance","tags":"dance"},
+    {"cmd":"sleepy","tags":"sleepy"},
+    {"cmd":"confused","tags":"confused"},
+    {"cmd":"triggered","tags":"triggered"},
+    {"cmd":"lewd","tags":"lewd"},
+    {"cmd":"fite","tags":"fite"},
+    {"cmd":"panic","tags":"panic"},
+    {"cmd":"flee","tags":"flee"},
+    {"cmd":"baited","tags":"baited"},
+    {"cmd":"laughing","tags":"laughing"},
+    {"cmd":"wut","tags":"wut"},
+    {"cmd":"excited","tags":"excited"},
+    {"cmd":"niceattempt","tags":"nice-attempt"}
+]
+}
