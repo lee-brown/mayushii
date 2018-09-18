@@ -100,7 +100,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
         }
         function removeSpaces(item){ //Simply finds and removes spaces from a string
-            item = item.replace(/\s/g, ''); 
+            try{
+                item = item.replace(/\s/g, ''); 
+            }
+            catch{
+                logger.error("Cannot remove spaces because arg is undefined");
+            }
             return item;
         }
         function createEmbed(response){//Create a new discord rich embed
