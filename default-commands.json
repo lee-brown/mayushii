@@ -10,13 +10,14 @@
     {"cmd":"confused","tags":"confused"},
     {"cmd":"triggered","tags":"triggered"},
     {"cmd":"lewd","tags":"lewd"},
-    {"cmd":"fite","tags":"fite"},
+    {"cmd":"fite","tags":"fight-me"},
     {"cmd":"panic","tags":"panic"},
     {"cmd":"flee","tags":"flee"},
     {"cmd":"baited","tags":"baited"},
     {"cmd":"laughing","tags":"laughing"},
     {"cmd":"wut","tags":"wut"},
     {"cmd":"excited","tags":"excited"},
-    {"cmd":"niceattempt","tags":"nice-attempt"}
+    {"cmd":"niceattempt","tags":"nice-attempt"},
+    {"cmd":"lenny","texts":"( ͡° ͜ʖ ͡°)"}
 ]
 }

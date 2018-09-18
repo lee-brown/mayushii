@@ -31,6 +31,15 @@ bot.on('ready', function (evt) {
     logger.info(bot.username + ' - (' + bot.id + ')');
 });
 bot.on('message', function (user, userID, channelID, message, evt) {
+    function removeSpaces(item){ //Simply finds and removes spaces from a string
+        try{
+            item = item.replace(/\s/g, ''); 
+            return item;
+        }
+        catch{
+            logger.error("Cannot remove spaces because arg is undefined");
+        }
+    }
     var nekobooruToken = "Token " + authnekobooru.token;
     var serverID = bot.channels[channelID].guild_id;
     var args = message.substring(1).split(' ');
@@ -50,8 +59,17 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             db.close();
         });
         function action(i){
+            var tagsArray = undefined;
+            var textArray = undefined;
             var singlecommand = defaultCommands.cmds[i];
-            var query = { cmd: singlecommand.cmd, tags: singlecommand.tags, texts: singlecommand.texts };
+            if(singlecommand.tags !== undefined){
+                tagsArray = removeSpaces(singlecommand.tags.toString()).split('&'); //Allows for multiple texts or tags to be put in at once
+            }
+            if(singlecommand.texts !== undefined){
+                textArray = singlecommand.texts.toString().split('&'); //Allows for multiple texts or tags to be put in at once
+            }
+            var query = { cmd: singlecommand.cmd};
+            var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray };
             return new Promise(function(res, rej) {
                 MongoClient.connect(url, function(err, db) {
                     if (err) throw err;
@@ -73,7 +91,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     if (err) throw err;
                     var dbo = db.db("mayushii");
                     if(notexists === 1){
-                        dbo.collection(collectionName).insertOne(query, function(err, res) {
+                        dbo.collection(collectionName).insertOne(toInsert, function(err, res) {
                             console.log("1 document inserted");
                             db.close();
                         });
@@ -102,11 +120,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         function removeSpaces(item){ //Simply finds and removes spaces from a string
             try{
                 item = item.replace(/\s/g, ''); 
+                return item;
             }
             catch{
                 logger.error("Cannot remove spaces because arg is undefined");
             }
-            return item;
         }
         function createEmbed(response){//Create a new discord rich embed
             Promise.try(function() {
@@ -168,6 +186,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             if(args[0] !== undefined){
                 newtext = newtext.replace("@target", target);
             }
+            else {
+                if(newtext.includes("@target")){
+                    newtext = "";
+                }
+            }
             return newtext;
         }
         if(command === 'help')
@@ -215,7 +238,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 },
                                 {
                                     "name": "Fun commands",
-                                    "value": "``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny`` ``!vote``",
+                                    "value": "``!rate`` ``!flip`` ``!say`` ``!bigsay`` ``!lenny`` ``!vote`` ``!rps`` (rock-paper-scissors)",
                                     "inline": true
                                 },
                                 {
@@ -307,9 +330,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 "<id> | <tag> *&<tag2>* | <message> *&<message2>*",
                 "``!add-tag`` **and** ``!add-text`` **add tags/message to an existing cmd**",
                 "<id> | <item> *&<item2>*",
-                "``!del-tag`` **and** ``!del-message`` **Delete specific tag/message in existing cmd**",
+                "``!del-tag`` **and** ``!del-text`` **Delete specific tag/message in existing cmd**",
                 "<id> <index>",
-                "``cmd-details`` **Details of a specific cmd**",
+                "``!cmd-details`` **Details of a specific cmd**",
                 "<cmd-id>",
                 "``!deletecmd`` **delete a specific cmd**",
                 "<cmd-id>",
@@ -339,6 +362,28 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 embed: richembed
             });
         }
+        else if(command === 'rps'){
+            Promise.try(function() {
+                return randomNumber(0, 2);
+            }).then(function(number) {
+                var result;
+                if(number == 0){
+                    result = "Rock";
+                }
+                else if (number == 1){
+                    result = "Paper";
+                }
+                else{
+                    result = "Scissors";
+                }
+                bot.sendMessage({
+                    to: channelID,
+                    message: result
+                });
+            }).catch({code: "RandomGenerationError"}, function(err) {
+                console.log(err);
+            });
+        }
         else if(command === 'say'){
             //Check if text contains a command (only admins should have the power to do this)
             if(args[0] !== undefined){
@@ -361,7 +406,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }
         }
-        else if(command === 'add-admin' && permissions(userID, ['admin'])){
+        else if(command === 'add-admin' && permissions(userID, ['admin']) && args[0] !== undefined){
             var stringtoadd = args[0];
             stringtoadd = stringtoadd.replace(/<|>|@/g, '');
             var dataFromFile = fs.readFileSync('admin' + '.txt');
@@ -388,7 +433,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }
         }
-        else if(command === 'add-poweruser' && permissions(userID, ['admin', 'power user'])){
+        else if(command === 'add-poweruser' && permissions(userID, ['admin', 'power user']) && args[0] !== undefined){
             var stringtoadd = args[0];
             stringtoadd = stringtoadd.replace(/<|>|@/g, '');
             var dataFromFile = fs.readFileSync('power user' + '.txt');
@@ -415,7 +460,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }
         }
-        else if(command === 'bigsay'){
+        else if(command === 'bigsay' && args[0] !== undefined){
             var text = "";
             for(i = 0; i < args.length; i++){
                 text = text + args[i] + " ";
@@ -465,13 +510,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }).catch({code: "RandomGenerationError"}, function(err) {
                 console.log(err);
-            });
-            
-        }
-        else if(command === 'lenny'){
-            bot.sendMessage({
-                to: channelID,
-                message: "( ͡° ͜ʖ ͡°)"
             });
         }
         else if(command === 'rate'){
@@ -569,7 +607,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     .then(function (response){
                         bot.sendMessage({
                             to: channelID,
-                            message: "Tuturuu~ File uploaded from URL: " + args[0] + " and tags " + args[1]
+                            message: "Tuturuu~ File uploaded from URL: ``" + args[0] + "`` with tags: " + args[1]
                         });
                         logger.info("File uploaded! - URL:" + args[0] + "Tags: " + args[1]);
                     })
@@ -584,10 +622,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             }
             else if (command === 'suggest'){
                 var stringtoadd = "\nSuggestions of user: " + user + " - " + userID + "\n";
-                for(i = 0; i < args.length; i++)
-                {
-                    stringtoadd += args[i];
-                }
+                stringtoadd = stringtoadd + argsString;
                 fs.appendFile('suggestions.txt', stringtoadd , function (err) {
                 if (err){
                     logger.error(err);
@@ -654,24 +689,21 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         var request = command.split('-')[1];
                         dbo.collection(collectionName).find(query).toArray(function(err, result) {
                             if (err) throw err;
-                            try{
+                            try{                
                                 argsString = argsString.split('|');
                                 argsString = argsString[1]; //<tags>
                                 var tagsArray = undefined;
                                 var textArray = undefined;
                                 if(argsString !== undefined){
+                                    var newvalues;
                                     if(request === "tag"){
-                                        textArray = removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
+                                        tagsArray = removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
+                                        newvalues = { $set: {tags: tagsArray}}; //update tags
                                     }
                                     else{
-                                        tagsArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
+                                        textArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
+                                        newvalues = { $set: {texts: textArray}}; //update tags
                                     }
-                                }
-                                if(request === "tag"){
-                                    var newvalues = { $set: {tags: tagsArray}}; //update tags
-                                }
-                                if(request === "text"){
-                                    var newvalues = { $set: {texts: textArray}}; //update tags
                                 }
                                 dbo.collection(collectionName).updateOne(query, newvalues, function(err, res) {
                                     if (err) throw err;
