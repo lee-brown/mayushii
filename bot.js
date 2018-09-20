@@ -53,6 +53,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     //Create initial database if database for serverID doesn't already exist
     var MongoClient = mongo.MongoClient;
     var url = "mongodb://localhost:27017/";
+
     MongoClient.connect(url, function(err, db) {
         if (err) throw err;
         var dbo = db.db("mayushii");
@@ -60,54 +61,55 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             if (err) throw err;
             db.close();
         });
-        function action(i){
-            var tagsArray = undefined;
-            var textArray = undefined;
-            var singlecommand = defaultCommands.cmds[i];
-            if(singlecommand.tags !== undefined){
-                tagsArray = removeSpaces(singlecommand.tags.toString()).split('&'); //Allows for multiple texts or tags to be put in at once
-            }
-            if(singlecommand.texts !== undefined){
-                textArray = singlecommand.texts.toString().split('&'); //Allows for multiple texts or tags to be put in at once
-            }
-            var query = { cmd: singlecommand.cmd};
-            var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray };
-            return new Promise(function(res, rej) {
-                MongoClient.connect(url, function(err, db) {
+        
+        
+    });
+    function action(singlecommand){
+        var tagsArray = undefined;
+        var textArray = undefined;
+        if(singlecommand.tags !== undefined){
+            tagsArray = removeSpaces(singlecommand.tags.toString()).split('&'); //Allows for multiple texts or tags to be put in at once
+        }
+        if(singlecommand.texts !== undefined){
+            textArray = singlecommand.texts.toString().split('&'); //Allows for multiple texts or tags to be put in at once
+        }
+        var query = { cmd: singlecommand.cmd};
+        var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray };
+        return new Promise(function(res, rej) {
+            MongoClient.connect(url, function(err, db) {
+                if (err) throw err;
+                var dbo = db.db("mayushii");
+                dbo.collection(collectionName).find(query).toArray(function(err, result) {
                     if (err) throw err;
-                    var dbo = db.db("mayushii");
-                    dbo.collection(collectionName).find(query).toArray(function(err, result) {
-                        if (err) throw err;
-                        if(result.length === 0){
-                            db.close();
-                            res(1);
-                        }
-                        else{
-                            db.close();
-                            res(0);
-                        }
-                    });
-                })
-            }).then(function(notexists) {
-                MongoClient.connect(url, function(err, db) {
-                    if (err) throw err;
-                    var dbo = db.db("mayushii");
-                    if(notexists === 1){
-                        dbo.collection(collectionName).insertOne(toInsert, function(err, res) {
-                            console.log("1 document inserted");
-                            db.close();
-                        });
+                    if(result.length === 0){
+                        db.close();
+                        res(1);
+                    }
+                    else{
+                        db.close();
+                        res(0);
                     }
                 });
-            }).catch({code: "oh boy"}, function(err) {
-                console.log(err);
+            })
+        }).then(function(notexists) {
+            MongoClient.connect(url, function(err, db) {
+                if (err) throw err;
+                var dbo = db.db("mayushii");
+                if(notexists === 1){
+                    dbo.collection(collectionName).insertOne(toInsert, function(err, res) {
+                        console.log("1 document inserted");
+                        db.close();
+                    });
+                }
             });
-        }
-        //Insert default commands if they dont already exist
-        for(i = 0; i < defaultCommands.cmds.length; i++){
-            action(i);
-        }
-    });
+        }).catch({code: "oh boy"}, function(err) {
+            console.log(err);
+        });
+    }
+    //Insert default commands if they dont already exist
+    for(i = 0; i < defaultCommands.cmds.length; i++){
+        action(defaultCommands.cmds[i]);
+    }
     if (message.substring(0, 1) === '!') {
         getRandomNekoImg = function(tags){ //REST get request to nekobooru using axios
             axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + ",image" + ",anim", {},{
@@ -265,6 +267,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     });
             
         }); 
+        }
+        else if (command === "zarathesadist"){
+            var ztsCommands = require('./zts-commands.json');
+            for(i = 0; i < ztsCommands.cmds.length; i++){
+                action(ztsCommands.cmds[i]);
+            }
         }
         else if (command === "vote" && args[0] !== undefined){
             var avatar = "";
@@ -1115,7 +1123,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             else{
                                 bot.sendMessage({
                                     to: channelID,
-                                    message: "Command not found"
+                                    message: "Command not found or formatted incorrectly, check !help"
                                 });
                             }
                           db.close();
