@@ -14,6 +14,8 @@ const fs = require('fs');
 var mongo = require('mongodb');
 var randomNumber = require("random-number-csprng");
 var ObjectId = require('mongodb').ObjectID;
+require("exit-on-epipe");
+
 // Configure logger settings
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {
@@ -131,32 +133,29 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 if(response.data.results.length === 1){//randomNumber doesnt accept two of the same values (e.g pick a number from 0 to 0), if length is 1 then the only number can be 0
                     return 0;
                 }
-                else if(response.data.results.length === 0){
-                    console.log("No images found!");
-                }
-                else{
+                else if(response.data.results.length > 1){
                     return randomNumber(0, response.data.results.length - 1);
                 }
-                
             }).then(function(number) {
-                var richembed = {
-                    'color': 15277667,
-                    'footer': {
-                        'icon_url': "https://nekobooru.xyz/img/favicon.png",
-                        'text': 'Nekobooru.xyz'
-                    },
-                    'image': {
-                        'url': "https://nekobooru.xyz/" +  response.data.results[number].contentUrl
-                    },
-                    
-                };
-                console.log(response.data.results[number].contentUrl);
-                bot.sendMessage({
-                    to: channelID,
-                    embed: richembed
-                });
+                if(number !== undefined){ //Where at least one result returned
+                    var richembed = {
+                        'color': 15277667,
+                        'footer': {
+                            'icon_url': "https://nekobooru.xyz/img/favicon.png",
+                            'text': 'Nekobooru.xyz'
+                        },
+                        'image': {
+                            'url': "https://nekobooru.xyz/" +  response.data.results[number].contentUrl
+                        },
+                        
+                    };
+                    bot.sendMessage({
+                        to: channelID,
+                        embed: richembed
+                    });
+                }
             }).catch({code: "RandomGenerationError"}, function(err) {
-                console.log(err);
+                logger.error(err);
             });
         }
         function permissions(user, rank){ //returns true if user has correct permissions
@@ -177,7 +176,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     to: channelID,
                     message: "Sorry, you do not have permission to do that, contact an admin"
                 });
-                logger.warn("insufficient privileges for userID " + user);
                 return false;
             }
         }
@@ -268,7 +266,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             
         }); 
         }
-        else if (command === "vote"){
+        else if (command === "vote" && args[0] !== undefined){
             var avatar = "";
             var username = "";
             avatar = "https://cdn.discordapp.com/avatars/" + userID + "/" + bot.users[userID].avatar + ".png?size=128";
@@ -1080,7 +1078,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     tagsExists = true;
                                     for(i = 0; i < resultTags.length; i++){
                                         resultTagsString = resultTagsString + resultTags[i];
+                                        if(i !== resultTags.length - 1){
+                                            resultTagsString = resultTagsString + ",";
+                                        }
                                     }
+                                    
                                 }
                                 if(resultText !== null){
                                     textExists = true;
@@ -1116,13 +1118,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     message: "Command not found"
                                 });
                             }
-                            
                           db.close();
                         });
                       });
                 }
                 catch(err){
-
+                    logger.err("Error with catch all")
                 }
                 
             }
