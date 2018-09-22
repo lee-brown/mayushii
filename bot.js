@@ -14,7 +14,6 @@ const fs = require('fs');
 var mongo = require('mongodb');
 var randomNumber = require("random-number-csprng");
 var ObjectId = require('mongodb').ObjectID;
-require("exit-on-epipe");
 
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -172,8 +171,44 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             console.log(err);
         });
     }
+    function getColor(){
+        return new Promise(function(res, rej) {
+            var query = { projection: { _id: 0, color: 1} }
+            const found = find({}, query);
+            found.then(function(result){
+                if(result.length === 0 || result[0].color === undefined){
+                    res("15277667");//default color
+                }
+                else{
+                    res(result[0].color);
+                }
+            });
+        }).catch({code: "An error occured: getColor()"}, function(err) {
+            console.log(err);
+        });
+    }
+    function getImage(){
+        return new Promise(function(res, rej) {
+            var query = { projection: { _id: 0, image: 1} }
+            const found = find({}, query);
+            found.then(function(result){
+                if(result.length === 0 || result[0].image === undefined){
+                    res("https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png");
+                }
+                else{
+                    res(result[0].image);
+                }
+            });
+        }).catch({code: "An error occured: getPrefix()"}, function(err) {
+            console.log(err);
+        });
+    }
     const prefix = getPrefix(); 
     prefix.then(function(prefix){//Get the prefix 
+    const color = getColor(); 
+    color.then(function(color){//Get the color 
+    const image = getImage(); 
+    image.then(function(image){//Get the image 
         //Insert default commands if they dont already exist
         for(i = 0; i < defaultCommands.cmds.length; i++){
             insertCMD(defaultCommands.cmds[i]);
@@ -341,10 +376,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         
                         var richembed = {
                             "title": "Tuturuu~ Here is a list of commands",
-                            "color": 15277667,
+                            "color": color,
                             "description": "Check the other help commands for more features such as !upload and don't forget you can upload reaction images for this bot at nekobooru.xyz",
                             "thumbnail": {
-                              "url": "https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png"
+                              "url": image
                             },
                             "fields": [
                                 {
@@ -368,7 +403,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 },
                                 {
                                     "name": "Other",
-                                    "value": c("suggest") + "**Suggest improvements or features to Mayuri**\n" + "``!prefix``" + "**Get the current prefix**\n" + "``!setprefix``" + "**Set a new prefix**",
+                                    "value": c("suggest") + " ``prefix`` "+ " ``!setprefix`` " + c("setcolor") + "(8 digit hex code)" + c("setimage") + "(URL)",
                                     "inline": true
                                 },
                                 {
@@ -389,6 +424,59 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                     });
             }    
+            else if(command === 'setimage' && args[0] !== undefined){//Prefix for !setprefix doesnt change
+                args[0] = removeSpaces(args[0]);
+                var query = { projection: { _id: 1, image: 1} }
+                const found = find({}, query);
+                found.then(function(result){
+                    var formattedResult = new Array();
+                    for(i=0;i<result.length;i++){
+                        if(result[i].image !== undefined){
+                            formattedResult.push(result[i]);
+                        }
+                    }
+                    if(formattedResult.length === 0){
+                        var query = { image: args[0]};
+                        insert(query);
+                    }
+                    else{
+                        var id = formattedResult[0]._id;
+                        var query = { $set: {image: args[0]}};
+                        update({_id: id}, query);
+                    }
+                })
+            }
+            else if(command === 'setcolor' && args[0] !== undefined){//Prefix for !setprefix doesnt change
+                args[0] = removeSpaces(args[0]);
+                var query = { projection: { _id: 1, color: 1} }
+                if(args[0].length === 8){
+                    const found = find({}, query);
+                    found.then(function(result){
+                        var formattedResult = new Array();
+                        for(i=0;i<result.length;i++){
+                            if(result[i].color !== undefined){
+                                formattedResult.push(result[i]);
+                            }
+                        }
+                        if(formattedResult.length === 0){
+                            var query = { color: args[0]};
+                            insert(query);
+                        }
+                        else{
+                            var id = formattedResult[0]._id;
+                            var query = { $set: {color: args[0]}};
+                            update({_id: id}, query);
+                        }
+                        
+                    })
+                }
+                else{
+                    bot.sendMessage({ 
+                        to: channelID,
+                        message: "Color is a 8 digit number"
+                    });
+                }
+            }
             else if(command === "zarathesadist"){
                 var ztsCommands = require('./zts-commands.json');
                 for(i = 0; i < ztsCommands.cmds.length; i++){
@@ -401,7 +489,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 avatar = "https://cdn.discordapp.com/avatars/" + userID + "/" + bot.users[userID].avatar + ".png?size=128";
                 username = bot.users[userID].username;
                 var richembed = {
-                    "color": 15277667,
+                    "color": color,
                     "fields": [
                         {
                             "name": "Tuturuu~ a vote has begun",
@@ -472,9 +560,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 }
                 var richembed = {
                     "title": "Tuturuu~ Here is how you can create commands",
-                    "color": 15277667,
+                    "color": color,
                     "thumbnail": {
-                      "url": "https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png"
+                      "url": image
                     },
                     "fields": [
                         {
@@ -506,9 +594,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 }
                 var richembed = {
                     "title": "Tuturuu~ Here is how you can create commands",
-                    "color": 15277667,
+                    "color": color,
                     "thumbnail": {
-                      "url": "https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png"
+                      "url": image
                     },
                     "fields": [
                         {
@@ -1163,5 +1251,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 }
             }
         }
+    });
+    });
     });
 });
