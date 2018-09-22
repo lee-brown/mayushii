@@ -268,7 +268,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             });
         }
-        else if(args[0] === '!prefix'){
+        else if(args[0] === '!prefix'){//Get the current prefix
             const prefix = getPrefix();
             prefix.then(function(prefix){
                 bot.sendMessage({
@@ -368,7 +368,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 },
                                 {
                                     "name": "Other",
-                                    "value": c("suggest") + "**Suggest improvements or features to Mayuri**\n" + c("prefix") + "**Get the current prefix**\n" + c("setprefix") + "**Set a new prefix**",
+                                    "value": c("suggest") + "**Suggest improvements or features to Mayuri**\n" + "``!prefix``" + "**Get the current prefix**\n" + "``!setprefix``" + "**Set a new prefix**",
                                     "inline": true
                                 },
                                 {
