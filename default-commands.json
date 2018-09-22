@@ -1,6 +1,6 @@
 {
 "cmds": [
-    {"cmd":"lenny","texts":"( ͡° ͜ʖ ͡°)"}
+    {"cmd":"lenny","texts":"( ͡° ͜ʖ ͡°)"},
     {"cmd":"angry","tags":"angry","texts":"A N G E R Y"},
     {"cmd":"annoyed","tags":"annoyed"},
     {"cmd":"bait","tags":"baited","texts":"Begon Bait!"},
