@@ -1,6 +1,4 @@
-//Note: In order to make the code as readable as possible there is a lot of code that does similar things as each other,
-//in future versions this code can be compressed with the same functionality but with less lines of code
-//The bot only works with mongodb and only works with the szurubooru api, (websites like nekobooru.xyz)
+//The bot only works with mongodb and only works with the szurubooru api and reddit, (websites like nekobooru.xyz)
 
 //Dependencies 
 var Discord = require('discord.io');
@@ -14,7 +12,15 @@ const fs = require('fs');
 var mongo = require('mongodb');
 var randomNumber = require("random-number-csprng");
 var ObjectId = require('mongodb').ObjectID;
-
+require('dotenv').config();
+const Snoowrap = require('snoowrap');
+const r = new Snoowrap({
+    userAgent: 'reddit-bot',
+    clientId: process.env.CLIENT_ID,
+    clientSecret: process.env.CLIENT_SECRET,
+    username: process.env.REDDIT_USER,
+    password: process.env.REDDIT_PASS
+});
 // Configure logger settings
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {
@@ -144,15 +150,36 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     function insertCMD(singlecommand){
         var tagsArray = undefined;
         var textArray = undefined;
+        var subreddits = undefined;
+        var type = undefined;
         if(singlecommand.tags !== undefined){
             tagsArray = removeSpaces(singlecommand.tags.toString()).split('&'); //Allows for multiple texts or tags to be put in at once
         }
         if(singlecommand.texts !== undefined){
             textArray = singlecommand.texts.toString().split('&'); //Allows for multiple texts or tags to be put in at once
         }
+        if(singlecommand.subreddit !== undefined){
+            subreddits = singlecommand.subreddit.toString(); //Allows for multiple texts or tags to be put in at once
+        }
+        if(singlecommand.type !== undefined){
+            type = singlecommand.type.toString(); //Allows for multiple texts or tags to be put in at once
+        }
         var query = { cmd: singlecommand.cmd};
-        var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray };
+        var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray, subreddit: subreddits, type: type };
         insertIfNotExist(query, toInsert); 
+    }
+    function genRandomNumber(min, max){
+        return new Promise(function(res, err){
+            if(min === max){
+                res(min);
+            }
+            else if(min > max){
+                res(0);
+            }
+            else{
+                res(randomNumber(min, max));
+            }
+        })
     }
     
     function getPrefix(){
@@ -217,6 +244,60 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         var args = message.split(' ');
         var command = args[0].split(prefix)[1];
         var argsString = message.substring(prefix.length).split(command + " ")[1]; //Full message string without the command
+        
+        function printRedditImg(posts){
+            var images = new Array();
+            var titles = new Array();
+            var selftext = new Array();
+            for(i = 0; i < posts.length; i++){ //Filter out any posts without an image
+                if(posts[i].url.match(/\.(gif|jpg|jpeg|tiff|png)$/i)){
+                    images.push(posts[i].url);
+                    titles.push(posts[i].title);
+                    selftext.push(posts[i].selftext);
+                }
+            }
+            var randomNo = genRandomNumber(0, titles.length - 1);
+            randomNo.then(function(number){
+                var text = "reddit.com/r/" + posts[number].subreddit;
+                text = text.toLowerCase();
+                var richembed = {
+                    'color': color,
+                    'footer': {
+                        'icon_url': "https://www.redditstatic.com/desktop2x/img/favicon/android-icon-192x192.png",
+                        'text': text
+                    },
+                    "title": titles[number],
+                    "description": selftext[number],
+                    'image': {
+                        'url': images[number]
+                    },
+                };
+                bot.sendMessage({
+                    to: channelID,
+                    embed: richembed
+                });
+            })
+        }
+        function printRedditPost(posts){
+            var randomNo = genRandomNumber(0, posts.length - 1);
+            randomNo.then(function(number){
+                var text = "reddit.com/r/" + posts[number].subreddit;
+                text = text.toLowerCase();
+                var richembed = {
+                    'color': color,
+                    'footer': {
+                        'icon_url': "https://www.redditstatic.com/desktop2x/img/favicon/android-icon-192x192.png",
+                        'text': text
+                    },
+                    "title": posts[number].title,
+                    "description": posts[number].selftext
+                };
+                bot.sendMessage({
+                    to: channelID,
+                    embed: richembed
+                });
+            })
+        }
         function c(arg){ //Format commands with current prefix
             var formatted = "``" + prefix + arg + "`` "
             return formatted;
@@ -251,10 +332,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     }
                                 }
                                 if(insert){
-                                    if(result[i].cmd === undefined){//Only happens with customcmds
-                                        finalmessage ="``No custom commands created yet``"
-                                    }
-                                    else{
+                                    if(result[i].cmd !== undefined){//Only happens with customcmds
                                         finalmessage = finalmessage + c(result[i].cmd);
                                     }
                                 }
@@ -312,47 +390,43 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             })
         }
+        
         else if (args[0] === (prefix + command)) { //If message contains prefix
             args.shift(); //Remove cmd from args array
             getRandomNekoImg = function(tags){ //REST get request to nekobooru using axios
                 axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + ",image" + ",anim", {},{
                     })
                     .then(response =>{ 
-                        createEmbed(response);
+                        var randomNo = genRandomNumber(0, response.data.results.length - 1);
+                        randomNo.then(function(number){
+                            var richembed = {
+                                'color': color,
+                                'footer': {
+                                    'icon_url': "https://nekobooru.xyz/img/favicon.png",
+                                    'text': 'nekobooru.xyz'
+                                },
+                                'image': {
+                                    'url': "https://nekobooru.xyz/" +  response.data.results[number].contentUrl
+                                },
+                                
+                            };
+                            bot.sendMessage({
+                                to: channelID,
+                                embed: richembed
+                            });
                         })
+                    })
                     .catch(err =>{
                         logger.warn("Failed to find image");
                     });
             }
-            function createEmbed(response){//Create a new discord rich embed
-                Promise.try(function() {
-                    if(response.data.results.length === 1){//randomNumber doesnt accept two of the same values (e.g pick a number from 0 to 0), if length is 1 then the only number can be 0
-                        return 0;
-                    }
-                    else if(response.data.results.length > 1){
-                        return randomNumber(0, response.data.results.length - 1);
-                    }
-                }).then(function(number) {
-                    if(number !== undefined){ //Where at least one result returned
-                        var richembed = {
-                            'color': 15277667,
-                            'footer': {
-                                'icon_url': "https://nekobooru.xyz/img/favicon.png",
-                                'text': 'Nekobooru.xyz'
-                            },
-                            'image': {
-                                'url': "https://nekobooru.xyz/" +  response.data.results[number].contentUrl
-                            },
-                            
-                        };
-                        bot.sendMessage({
-                            to: channelID,
-                            embed: richembed
-                        });
-                    }
-                }).catch({code: "RandomGenerationError"}, function(err) {
-                    logger.error(err);
-                });
+            getRedditHot = function(subreddit){
+                return new Promise(function(res, err){
+                    r.getSubreddit(subreddit).getHot().then(posts => {
+                        var posts = posts.toJSON();
+                        res(posts);
+                    })
+                })
             }
             
             function addUserId(originaltext, target){ //Replaces @user and @target with actual target and user tags
@@ -408,7 +482,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 },
                                 {
                                     "name": "Help",
-                                    "value": c("help-nekobooru") + c("help-customcmd"),
+                                    "value": c("help-nekobooru") + c("help-customcmd") + c("help-reddit"), 
                                     "inline": true
                                 }
                             ]
@@ -482,6 +556,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 for(i = 0; i < ztsCommands.cmds.length; i++){
                     insertCMD(ztsCommands.cmds[i]);
                 }
+            }
+            
+            else if(command === "rimg" && args[0] !== undefined){
+                var got = getRedditHot(args[0]);
+                got.then(function(posts){
+                    printRedditImg(posts);
+                })
+            }
+            else if(command === "rpost" && args[0] !== undefined){
+                var got = getRedditHot(args[0]);
+                got.then(function(posts){
+                    printRedditPost(posts);
+                })
             }
             else if(command === "vote" && args[0] !== undefined){
                 var avatar = "";
@@ -577,6 +664,47 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     embed: richembed
                 });
             }
+            else if(command === "help-reddit"){
+                var customCmdsLines = [
+                    "Create your own reddit commands! If multiple commands have the same name a random command with that name will be chosen. Same goes for commands with multiple messages. You can choose to filter out text posts by using the img option in !newcmdr",
+                    c("newcmdr") + " **Create a new custom command**",
+                    "<cmd-name> | <subreddit> | <img/post (default is post)>",
+                    c("updatecmd-subr") + "**Replace the subreddit**",
+                    "<cmd-id> | <subreddit>* ",
+                    c("cmd-details") + " **Details of a specific cmd**",
+                    "<cmd-id>",
+                    c("deletecmd") + " **delete a specific cmd**",
+                    "<cmd-id>",
+                    c("lscmdname") + " **list cmds with same cmd name (gives cmd-ids)**",
+                    "<cmd-name>",
+                    c("rpost") + " **Gets random img from Hot from specified subreddit**",
+                    "<subreddit>",
+                    c("rimg") + " **Gets random img from Hot from specified subreddit**",
+                    "<subreddit>",
+                ]
+                var customCmdsString = "";
+                for(i = 0; i < customCmdsLines.length; i++){
+                    customCmdsString = customCmdsString + customCmdsLines[i] + "\n";
+                }
+                var richembed = {
+                    "title": "Tuturuu~ Here is how you can create commands",
+                    "color": color,
+                    "thumbnail": {
+                      "url": image
+                    },
+                    "fields": [
+                        {
+                            "name": "Custom command creation",
+                            "value": customCmdsString,
+                            "inline": true
+                        }
+                    ]
+                }
+                bot.sendMessage({
+                    to: channelID,
+                    embed: richembed
+                });
+            }
             else if(command === "help-nekobooru"){
                 var nekobooruLines = [
                     c("tag") + "**Returns random image with given tag(s)**",
@@ -593,7 +721,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     nekobooruString = nekobooruString + nekobooruLines[i] + "\n";
                 }
                 var richembed = {
-                    "title": "Tuturuu~ Here is how you can create commands",
+                    "title": "Tuturuu~ Here is how you can interact with nekobooru.xyz",
                     "color": color,
                     "thumbnail": {
                       "url": image
@@ -803,6 +931,26 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 thingToPass = {cmd: argstring[0], tags: tagsArray, texts: textArray };
                 insert(thingToPass); 
             }
+            else if(command === 'newcmdr'){ //<cmd> | <subreddits> | text post / image post
+                var argstring = message.substring(1);
+                argstring = message.split("!newcmdr ");
+                argstring = argstring[1];
+                argstring = argstring.split('|');
+                var subreddits = undefined;
+                var type = undefined;
+                if(argstring[0] !== undefined){
+                    argstring[0] = removeSpaces(argstring[0]); 
+                }
+                if(argstring[1] !== undefined){
+                    subreddits = removeSpaces(argstring[1]);
+                }
+                if(argstring[2] !== undefined){
+                    type = removeSpaces(argstring[2]);
+                }
+                
+                thingToPass = {cmd: argstring[0], subreddit: subreddits, type: type };
+                insert(thingToPass); 
+            }
             else if (command === 'ls-allcmds'){ 
                 const defaultCmds = getCmds("all"); 
                 defaultCmds.then(function(finalmessage){
@@ -923,7 +1071,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                 }
             }
-            else if ((command === "updatecmd-text" || command === "updatecmd-tag") && argsString.includes("|") && args[0] !== undefined){ //<id> | <tags>
+            else if ((command === "updatecmd-text" || command === "updatecmd-tag"| command === "updatecmd-subr") && argsString.includes("|") && args[0] !== undefined){ //<id> | <tags>
                 try{
                     var id = ObjectId(removeSpaces(args[0]));
                     var query = { _id: id };
@@ -940,6 +1088,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         else if (command === "updatecmd-text"){
                             textArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
                             newvalues = { $set: {texts: textArray}}; //update tags
+                        }
+                        else if (command === "updatecmd-subr"){
+                            subreddits = removeSpaces(argsString);
+                            newvalues = { $set: {subreddit: subreddits}}; 
                         }
                     }
                     update(query, newvalues);
@@ -1097,8 +1249,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         //Builds a nicely formatted message string for one command
                         var finalMessage = ""
                         //asciiidoc allows for colors, the ==== under the line makes both the '=' and the above line blue
-                        finalMessage = finalMessage + "```asciidoc\nCmd ID: " + result[i]._id + "\n================================\nCmd name :: [" + result[i].cmd + "]\nTags :: "
-                        if(result[i].tags != undefined){
+                        finalMessage = finalMessage + "```asciidoc\nCmd ID: " + result[i]._id + "\n================================\nTags :: "
+                        if(result[i].tags !== undefined && result[i].tags != null){
                             for(j = 0; j< result[i].tags.length; j++){
                                 finalMessage = finalMessage + '[' + result[i].tags[j] + ']';
                                 if(j != result[i].tags.length-1){ //Make sure commas are in the right place
@@ -1110,13 +1262,20 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             finalMessage = finalMessage + "No tags";
                         }
                         finalMessage = finalMessage + "\nTexts :: ";
-                        if(result[i].texts != undefined){
+                        if(result[i].texts !== undefined && result[i].texts != null){
                             for(j = 0; j< result[i].texts.length; j++){
                                 finalMessage = finalMessage + '[' + result[i].texts[j] + ']';
                                 if(j != result[i].texts.length-1){
                                     finalMessage = finalMessage + ", ";
                                 }
                             }
+                        }
+                        else{
+                            finalMessage = finalMessage + "No texts";
+                        }
+                        finalMessage = finalMessage + "\nSubreddit :: ";
+                        if(result[i].subreddit !== undefined && result[i].subreddit != null){
+                            finalMessage = finalMessage + result[i].subreddit;
                         }
                         else{
                             finalMessage = finalMessage + "No texts";
@@ -1197,11 +1356,15 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             resultCmd = result[number].cmd; //(string) Custom command e.g !test
                             resultTags = result[number].tags; //(array) Tags which the custom command queries nekobooru with
                             resultText = result[number].texts; //(array) Text(s) (if multiple, choose one randomly) text to print out along side reaction image
+                            resultSubr = result[number].subreddit;
+                            resultType = result[number].type;
                             var tagsExists = false; //Check if there are missing values
                             var textExists = false;
+                            var subrExists = false; //subreddit
+                            var typeExists = false; //subreddit
                             var resultTextString;
                             var resultTagsString = "";
-                            if(resultTags !== null){
+                            if(resultTags !== null && resultTags !== undefined){
                                 tagsExists = true;
                                 for(i = 0; i < resultTags.length; i++){
                                     resultTagsString = resultTagsString + resultTags[i];
@@ -1210,10 +1373,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     }
                                 }
                             }
-                            if(resultText !== null){
+                            if(resultText !== null && resultText !== undefined){
                                 textExists = true;
                                 var random = Math.floor((Math.random() * resultText.length));
                                 var resultTextString = resultText[random];
+                            }
+                            if(resultSubr !== null && resultSubr !== undefined){
+                                subrExists = true;
+                            }
+                            if(resultType !== null && resultType !== undefined){
+                                typeExists = true;
                             }
                             if(tagsExists && textExists){
                                 resultTextString = addUserId(resultTextString, args[0]); //replace @target and @user
@@ -1229,13 +1398,36 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     to: channelID,
                                     message: resultTextString
                                 });
-                                //getRandomNekoImg(resultCmd);
                             }
                             else if(tagsExists && !textExists){
                                 getRandomNekoImg(resultTagsString);
                             }
                             else{
-                                getRandomNekoImg(resultCmd);
+                                if(subrExists && typeExists){
+                                    if(removeSpaces(resultType) === "img"){
+                                        var got = getRedditHot(resultSubr);
+                                        got.then(function(posts){
+                                            printRedditImg(posts);
+                                        })
+                                    }
+                                    else if(resultType = "post"){
+                                        
+                                        var got = getRedditHot(resultSubr);
+                                        got.then(function(posts){
+                                            printRedditPost(posts);
+                                        })
+                                    }
+                                }
+                                else if (subrExists){
+                                    var got = getRedditHot(resultSubr);
+                                    got.then(function(posts){
+                                        printRedditPost(posts);
+                                    })
+                                }
+                                else{
+                                    getRandomNekoImg(resultCmd);
+                                }
+                                
                             }
                         }
                         else{

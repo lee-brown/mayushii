@@ -17,11 +17,9 @@
     {"cmd":"disappointed","tags":"disappointed"},
     {"cmd":"disgust","tags":"disgust"},
     {"cmd":"dunno","tags":"dunno"},
-    {"cmd":"eating","tags":"eating"},
     {"cmd":"embarrassed","tags":"embarrassed"},
     {"cmd":"evil","tags":"evil-smile"},
     {"cmd":"excited","tags":"excited"},
-    {"cmd":"fistbump","tags":"fist-bump"},
     {"cmd":"fite","tags":"fight-me","texts":"@user tells @target to square up!"},
     {"cmd":"flee","tags":"flee"},
     {"cmd":"fu","tags":"fuck-you"},
@@ -54,7 +52,6 @@
     {"cmd":"spooky","tags":"spooky"},
     {"cmd":"stare","tags":"stare"},
     {"cmd":"success","tags":"success"},
-    {"cmd":"tableflip","tags":"table-flip"},
     {"cmd":"tasty","tags":"tasty"},
     {"cmd":"teehee","tags":"teehee"},
     {"cmd":"thinking","tags":"thinking"},
@@ -66,6 +63,16 @@
     {"cmd":"weary","tags":"weary"},
     {"cmd":"wink","tags":"wink"},
     {"cmd":"wut","tags":"wut"},
-    {"cmd":"yes","tags":"yes"}
+    {"cmd":"yes","tags":"yes"},
+    {"cmd":"joke","subreddit":"jokes"},
+    {"cmd":"dadjoke","subreddit":"dadjokes"},
+    {"cmd":"wsb","subreddit":"wallstreetbets", "type": "img"},
+    {"cmd":"mirl","subreddit":"me_irl", "type": "img"},
+    {"cmd":"animeirl","subreddit":"anime_irl", "type": "img"},
+    {"cmd":"beamazed","subreddit":"BeAmazed", "type": "img"},
+    {"cmd":"interestingasf","subreddit":"interestingasfuck", "type": "img"},
+    {"cmd":"badcode","subreddit":"badcode", "type": "img"},
+    {"cmd":"til","subreddit":"todayilearned", "type": "img"},
+    {"cmd":"eyebleach","subreddit":"eyebleach", "type": "img"}
 ]
 }
