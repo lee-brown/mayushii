@@ -3,7 +3,10 @@ A customizable and feature rich discord bot
 
 ## Features
 
-* Support for szurubooru's api (for websites like nekobooru.xyz) and reddit for pictures and text
+* Support for 
+  * Szurubooru's API (for websites like nekobooru.xyz) 
+  * Reddit API for pictures and text
+  * Wolframalpha API for calculations
 * Customization options (prefix, rich embed color, image etc)
 * Commands can be created and edited by users within discord itself
   * These commands can return reddit images, reddit text posts, nekobooru.xyz images, and text (which can include discord tags)
@@ -21,7 +24,8 @@ A customizable and feature rich discord bot
 * Install MongoDB 
 * Install discord.io and other dependencies with npm
 * Enter discord bot token in auth.json
-* Enter nekobooru token in auth-nekobooru for all the nekobooru features to work correctly
+* Enter nekobooru token in auth-nekobooru.json 
+* Enter wolframalpha token in auth-wolframalpha.json
 * Go to [Reddit and create an app](https://www.reddit.com/prefs/apps) (make sure you select script)
 * Then create a file called ".env" (without quotes) and fill in and add the following lines (from information from the reddit app you created):
   * CLIENT_ID=
