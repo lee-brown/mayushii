@@ -29,6 +29,7 @@
     "mongodb": "^3.1.6",
     "node-gyp": "^3.8.0",
     "random-number-csprng": "^1.0.2",
+    "read-xml": "^3.0.0",
     "rebuild": "^0.1.2",
     "request": "^2.88.0",
     "simple-spellchecker": "^0.9.6",
@@ -36,6 +37,8 @@
     "strip-bom": "^3.0.0",
     "typo-js": "^1.0.3",
     "unzip-stream": "^0.3.0",
-    "winston": "^3.0.0"
+    "winston": "^3.0.0",
+    "xml2js": "^0.4.19",
+    "xml2json": "^0.11.2"
   }
 }

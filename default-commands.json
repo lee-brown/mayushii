@@ -72,7 +72,7 @@
     {"cmd":"beamazed","subreddit":"BeAmazed", "type": "img"},
     {"cmd":"interestingasf","subreddit":"interestingasfuck", "type": "img"},
     {"cmd":"badcode","subreddit":"badcode", "type": "img"},
-    {"cmd":"til","subreddit":"todayilearned", "type": "img"},
+    {"cmd":"til","subreddit":"todayilearned"},
     {"cmd":"eyebleach","subreddit":"eyebleach", "type": "img"}
 ]
 }

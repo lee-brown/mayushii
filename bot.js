@@ -10,6 +10,7 @@ const axios = require('axios');
 var Promise = require("bluebird");
 const fs = require('fs');
 var mongo = require('mongodb');
+var authwolframalpha = require('./auth-wolframalpha.json');
 var randomNumber = require("random-number-csprng");
 var ObjectId = require('mongodb').ObjectID;
 require('dotenv').config();
@@ -420,6 +421,36 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         logger.warn("Failed to find image");
                     });
             }
+            getWolframAlpha = function(input){ //REST get request to nekobooru using axios
+                axios.get('http://api.wolframalpha.com/v2/query?input=' + removeSpaces(input) + "&appid=" + authwolframalpha.token, {},{
+                    })
+                    .then(response =>{ 
+                        var parseString = require('xml2js').parseString;
+                        var xml = response.data.toString();
+                        parseString(xml, function (err, result) {
+                            var lines = "";
+                            for(i = 0; i < result.queryresult.pod[1].subpod[0].plaintext.length; i++){
+                                lines = lines + result.queryresult.pod[1].subpod[0].plaintext[i];
+                            }
+                            var richembed = {
+                                'color': color,
+                                'footer': {
+                                    'icon_url': "https://cdn.iconscout.com/icon/free/png-256/wolfram-alpha-2-569293.png",
+                                    'text': 'wolframalpha.com'
+                                },
+                                "description": lines,
+                            };
+                            bot.sendMessage({
+                                to: channelID,
+                                embed: richembed
+                            });
+                        })
+                        
+                    })
+                    .catch(err =>{
+                        logger.warn(err);
+                    });
+            }
             getRedditHot = function(subreddit){
                 return new Promise(function(res, err){
                     r.getSubreddit(subreddit).getHot().then(posts => {
@@ -466,8 +497,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                     "value": "Additional commands can be created from discord chat (check " + c("help-customcmd") + ")\n" + custcmds,
                                     "inline": true},
                                     {
-                                    "name": "Fun commands",
-                                    "value": c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps"),
+                                    "name": "Fun/useful commands",
+                                    "value": c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps") + c("eval"),
                                     "inline": true
                                 },
                                 {
@@ -627,8 +658,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     "<cmd-name> | <tag> *&<tag2>* | <message> *&<message2>*",
                     c("updatecmd-text") + " **and**" + c("updatecmd-tag") + "**Replace the tags/message**",
                     "<cmd-id> | <tag> *&<tag2>* ",
-                    c("updatecmd") + " **Replace an entire command with new values**",
-                    "<id> | <tag> *&<tag2>* | <message> *&<message2>*",
                     c("add-tag") + " **and** " + c("add-text") + "**add tags/message to an existing cmd**",
                     "<id> | <item> *&<item2>*",
                     c("del-tag") + " **and** " + c("del-text") + "**Delete tag/message in existing cmd**",
@@ -1018,6 +1047,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                         });
                     }
             }
+            else if (command === 'eval'){
+                getWolframAlpha(argsString);
+            }
             else if (command === 'suggest'){
                 var stringtoadd = "\nSuggestions of user: " + user + " - " + userID + "\n";
                 stringtoadd = stringtoadd + argsString;
@@ -1030,7 +1062,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 bot.sendMessage({
                     to: channelID,
                     message: "Tuturuu~ Thank you for your suggestion"
-                });lsc
+                });
             }
             else if (command === 'newtag' && permissions(userID, ['power user', 'admin'])){
                 if(args[0] === undefined){
