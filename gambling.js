@@ -4,17 +4,23 @@ module.exports = {
     printCredits: function(collectionName, url, userID){
         const found = database.find(collectionName, url, { user: userID });
         found.then(function(result, err){
-            if(result[0].credits > 750){
-                sendMessage("<@!" + userID + ">" + " has " + result[0].credits + " credits! 😎");
+            try{
+                if(result[0].credits > 750){
+                    sendMessage("<@!" + userID + ">" + " has " + result[0].credits + " credits! 😎");
+                }
+                else if(result[0].credits < 10){
+                    sendMessage("<@!" + userID + ">" + " only has "+ result[0].credits + " credits....... what are you doing with your life..?");
+                }
+                else if(result[0].credits < 100){
+                    sendMessage( "<@!" + userID + ">" + " has " + result[0].credits + " credits... better start saving up!");
+                }
+                else{
+                    sendMessage("<@!" + userID + ">" + " has " + result[0].credits + " credits.");
+                }
             }
-            else if(result[0].credits < 10){
-                sendMessage("<@!" + userID + ">" + " only has "+ result[0].credits + " credits....... what are you doing with your life..?");
-            }
-            else if(result[0].credits < 100){
-                sendMessage( "<@!" + userID + ">" + " has " + result[0].credits + " credits... better start saving up!");
-            }
-            else{
-                sendMessage("<@!" + userID + ">" + " has " + result[0].credits + " credits.");
+            catch(err)
+            {
+                console.log("gambling.printCredits Error: " + err);
             }
         });
     },
@@ -118,18 +124,102 @@ module.exports = {
     addCredits: function(collectionName, url, args){
         var user = args[0];
         user = user.replace(/<|>|@/g, '');
+        console.log("oh no");
         getCredits(collectionName, url, user).then(function(result, err){
-            console.log(result);
-            if(args[0] !== "" && args[1] !== "" && args[0] !== undefined && args[1] !== undefined){
-                var credits = result[0].credits;
-                credits += parseInt(args[1]);
-                updateCredits(collectionName, url, result[0].id, user, credits)
+            if(result.length == 0){
+                sendMessage("User could not be found...");
             }
             else{
-                sendMessage("Command formmated incorrectly");
+                if(args[0] !== "" && args[1] !== "" && args[0] !== undefined && args[1] !== undefined){
+                    var credits = result[0].credits;
+                    credits += parseInt(args[1]);
+                    updateCredits(collectionName, url, result[0].id, user, credits);
+                }
+                else{
+                    sendMessage("Command formmated incorrectly");
+                }
             }
         });
-        ;
+    },
+    addCredits: function(collectionName, url, userID, credits){
+        console.log("wew");
+        getCredits(collectionName, url, userID).then(function(result, err){
+            if(result.length == 0){
+                sendMessage("User could not be found...");
+            }
+            else{
+                var newcredits = result[0].credits;
+                newcredits += credits;
+                updateCredits(collectionName, url, result[0].id, userID, newcredits);
+            }
+        });
+    },
+    printRichList: function(collectionName, url){
+        var query = { projection: { _id: 0, user: 1, username: 1, credits: 1} }
+        const found = database.find(collectionName, url, {}, query);
+        found.then(function(result){
+            var message = "";
+            if(result.length ==0){
+                sendMessage("No users found!");
+            }
+            else{
+                message+= "```glsl\n#Server Rich List \n\n"
+                for(i=0;i<result.length;i++){
+                    if(i == 0){
+                        message+="🏆 "
+                    }
+                    if(i == 1){
+                        message+="🥈 "
+                    }
+                    if(i == 2){
+                        message+="🥉 "
+                    }
+                    message+= result[i].username + ": " + result[i].credits + "\n";
+                    if(i>9){
+                        break;
+                    }
+
+                }
+                message+= "```"
+            }
+            sendMessage(message);
+        });
+    },
+    startOver: function(collectionName, url, userID){
+        database.delete(collectionName, url, {user: userID, username: null});
+        database.delete(collectionName, url, {credits: 1000});
+    },
+    gift: function(collectionName, url, userID, args){
+        var giftAmount = parseInt(args[1]);
+        var targetUserId = args[0];
+        if(Math.sign(giftAmount) == -1){
+            sendMessage("You cannot send negative money... nice try.")
+        }
+        else{
+            targetUserId = targetUserId.replace(/<|>|@/g, '');
+            //update gifter
+            getCredits(collectionName, url, userID).then(function(result, err){
+                var credits = result[0].credits - giftAmount;
+                if(Math.sign(credits) == -1){
+                    sendMessage("You dont have enough credits!")
+                }
+                else{
+                    updateCredits(collectionName, url, result[0].id, userID, credits);
+                    //update target
+                    getCredits(collectionName, url, targetUserId).then(function(result, err){
+                        var credits = result[0].credits + giftAmount;
+                        updateCredits(collectionName, url, result[0].id, targetUserId, credits);
+                    });
+                    sendMessage(args[0] + " recieved " + args[1] + " credits from " + "<@!" + userID + ">");
+                }
+            });
+        }
+    },
+    updateActivity: function(collectionName, url, id, newCredits, activity){
+        return updateActivity(collectionName, url, id, newCredits, activity)
+    },
+    getCredits: function(collectionName, url, userID){
+        return getCredits(collectionName, url, userID);
     }
 }
 getCredits = function(collectionName, url, userID){
@@ -137,4 +227,7 @@ getCredits = function(collectionName, url, userID){
 }
 updateCredits = function(collectionName, url, id, userID, newCredits){
     database.update(collectionName, url, {user: userID}, {$set: {user: userID, credits: newCredits}} )
+}
+updateActivity = function(collectionName, url, id,userID, newCredits, activity){
+    database.update(collectionName, url, {_id: id}, {$set: {user: userID, credits: newCredits, dailyactivity: activity}} )
 }

@@ -5,7 +5,7 @@ var database = require('./db-access.js');
 var tools = require('./tools.js');
 module.exports = {
     initial: function(collectionName, url){
-        MongoClient.connect(url, function(err, db) {
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.createCollection(collectionName, function(err, res) {
@@ -20,8 +20,26 @@ module.exports = {
     insert: function(collectionName, url, query){ //Inserts one item
         return insert(collectionName, url, query, query2);
     },
+    upsert: function(collectionName, url, query, query2){
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
+            if (err) throw err;
+            var dbo = db.db("mayushii");
+            dbo.collection(collectionName).updateOne(
+                    query,
+                    query2,
+                    {upsert: true, safe: false},
+                    function(err,data){
+                        if (err){
+                            console.log(err);
+                        }else{
+                            console.log("score succeded");
+                        }
+                    }
+                );
+            });
+    },
     update: function(collectionName, url, query, newvalues){//Updates one item with certain _id (query = _id object)
-        MongoClient.connect(url, function(err, db) {
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).updateOne(query, newvalues, function(err, res) {
@@ -30,8 +48,24 @@ module.exports = {
             });
         }); 
     },
+    replace: function(collectionName, url, query, newvalues){
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
+            if (err) throw err;
+            var dbo = db.db("mayushii");
+            dbo.collection(collectionName).replaceOne(
+                query,
+                newvalues, function(err, res) {
+                    console.log(res);
+                    if (err) throw err;
+                    db.close();
+                }
+             );
+            
+
+        }); 
+    },
     delete: function(collectionName, url, myquery){
-        MongoClient.connect(url, function(err, db) {
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).deleteOne(myquery, function(err, obj) {
@@ -41,7 +75,7 @@ module.exports = {
         }); 
     },
     startover: function(collectionName, url){
-        MongoClient.connect(url, function(err, db) {
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).drop(function(err, delOK) {
@@ -73,8 +107,8 @@ module.exports = {
         insertIfNotExist(collectionName, url, query, toInsert); 
     },
     insertUser: function(collectionName, url, singlecommand){ 
-        var query = { user: singlecommand.user};
-        var toInsert = { user: singlecommand.user, credits: singlecommand.credits };
+        var query = {  user: singlecommand.user, username: singlecommand.username};
+        var toInsert = { user: singlecommand.user, username: singlecommand.username, credits: singlecommand.credits };
         insertIfNotExist(collectionName, url, query, toInsert); 
     },
     getCmds: function(collectionName, url, typeOfCmd){ //Returns cmd names (typeOfCmd is a string either "custom" or "default" or "all")
@@ -123,7 +157,7 @@ module.exports = {
 }
 }
 insert = function(collectionName, url, query){ //Inserts one item
-    MongoClient.connect(url, function(err, db) {
+    MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
         if (err) throw err;
         var dbo = db.db("mayushii");
         dbo.collection(collectionName).insertOne(query, function(err, res) {
@@ -153,7 +187,7 @@ insertIfNotExist = function(collectionName, url, query, toInsert){//Function tha
 }
 find = function(collectionName, url, query, query2){ //Finds stuff based on _id (query = _id object)
     return new Promise(function(res, rej) {
-        MongoClient.connect(url, function(err, db) {
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).find(query, query2).toArray(function(err, result) {

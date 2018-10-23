@@ -1,12 +1,13 @@
 
 require('./rng.js');
 var Promise = require("bluebird");
+var perms = require('./perms.js');
 module.exports = {
     bigsay: function(text){
         var finalmessage = "";
         var invalidInput = false;
         var numbers = ['zero', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine'];
-        for(i = 0; i < text.length - 1; i++){
+        for(i = 0; i < text.length; i++){
             if(text[i].match(/[a-zA-Z\s]+/)){
                 var formatted = text[i].toLowerCase();
                 if(text[i] === " "){
@@ -47,7 +48,7 @@ module.exports = {
             console.log(err);
         });
     },
-    say: function(input){
+    say: function(input,args, userID){
         //Check if text contains a command (only admins should have the power to do this)
         if(input.length > 0){
             if(input[0] == '!'){
@@ -57,7 +58,7 @@ module.exports = {
         else{
             containscommand = false;
         }
-        if(!containscommand || permissions(userID, ['admin'])){
+        if(!containscommand || perms.permissions(userID, ['admin'])){
             var text = "";
             for(i = 0; i < args.length; i++){
                 text = text + args[i] + " ";

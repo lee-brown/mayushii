@@ -1,3 +1,4 @@
+var schedule = require('node-schedule');
 var Discord = require('discord.io');
 var logger = require('winston');
 var auth = require('./auth.json');
@@ -14,6 +15,8 @@ var serverData = require('./server-data.js');
 var tools = require('./tools.js');
 var gamble = require('./gambling.js')
 var texts = require('./text.js');
+
+
 // Configure logger settings
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {
@@ -32,11 +35,34 @@ bot.on('ready', function (evt) {
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
 });
-
+var collectionName; 
+var url = "mongodb://localhost:27017/";
+schedule.scheduleJob('*/1 * * * *', () => { 
+    console.log("ooo");
+    var query = { projection: { _id: 0, user: 1, username: 1, credits: 1} } 
+        const found = database.find(collectionName, url, {}, query);
+        found.then(function(result){
+            for(i=0;i<result.length;i++){
+                gamble.getCredits(collectionName, url, result[i].user).then(function(result2, err){
+                    console.log(result2);
+                    if(result[0].dailyactivity == true){
+                        gamble.updateActivity(collectionName, url, result2[0].id,userID, result[i].credits ,false);
+                        gamble.addCredits(collectionName, url, userID, 50);
+                    }
+                });
+            }
+        });
+ }) 
 bot.on('message', function (user, userID, channelID, message, evt) {
-    var url = "mongodb://localhost:27017/";
-    var serverID = bot.channels[channelID].guild_id;
-    var collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
+    if(collectionName == undefined){
+        var serverID = bot.channels[channelID].guild_id;
+        collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
+    }
+    
+    gamble.getCredits(collectionName, url, userID).then(function(result, err){
+        gamble.updateActivity(collectionName, url, result[0].id, userID, result[0].credits ,true);
+    });
+
     const prefix = serverData.getPrefix(collectionName, url); 
     prefix.then(function(prefix){//Get the prefix 
     const color = serverData.getColor(collectionName, url); 
@@ -98,11 +124,14 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 );
             });
         }
+
         var defaultCommands = require('./default-commands.json'); //Insert default commands if they dont already exist
         for(i = 0; i < defaultCommands.cmds.length; i++){
             database.insertCMD(collectionName, url, defaultCommands.cmds[i]);
         } 
-        database.insertUser(collectionName, url, {user: userID, credits: 1000});//Insert user if not exists
+        if(user != undefined){
+            database.insertUser(collectionName, url, {user: userID, username: user, credits: 1000, dailyactivity: false});//Insert user if not exists
+        }
 
         //Get args and format message 
         var args = message.split(' ');
@@ -184,7 +213,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 fun.rps();
             }
             else if(command === 'say'){
-                fun.say(argsString);
+                fun.say(argsString, args, userID);
             }
             else if(command === 'add-admin' && perms.permissions(userID, ['admin']) && args[0] !== undefined){
                 perms.addAdmin(args[0]);
@@ -306,6 +335,15 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'help-text'){
                 help.textHelp(image);
             }
+            else if(command === 'richlist'){
+                gamble.printRichList(collectionName, url);
+            }
+            else if(command === 'gamblestartoover' && perms.permissions(userID, ['admin'])){
+                gamble.startOver(collectionName, url, userID);
+            }
+            else if(command === 'gift' && perms.permissions(userID, ['admin'])){
+                gamble.gift(collectionName, url, userID, args);
+            }
             else {
                 try{
                     var query = { cmd: tools.removeSpaces(command) };
@@ -405,3 +443,4 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     });
     });
 });
+

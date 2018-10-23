@@ -25,7 +25,7 @@ module.exports = {
                         "inline": true},
                         {
                         "name": "Fun/useful commands",
-                        "value": c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps") + c("eval") + c("credits") + c("slots") + c("gambleflip") + c("fancy") + c("spaced") + c("metal")+ c("smallcaps")+ c("upsidedown")+ c("bubble"),
+                        "value": c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps") + c("eval") + c("credits") + c("slots") + c("gambleflip") + c("richlist") + c("fancy") + c("spaced") + c("metal")+ c("smallcaps")+ c("upsidedown")+ c("bubble"),
                         "inline": true
                     },
                     {
@@ -161,6 +161,7 @@ module.exports = {
             c("gambleflip") + "**Flip a coin and bet a certain amount**",
             "<heads/tails> <bet-amount>",
             c("credits") + "**See how many credits you have**",
+            c("richlist") + "**See who the filthy 1% are**",
         ]
         var gambleString = "";
         for(i = 0; i < gambleLines.length; i++){
