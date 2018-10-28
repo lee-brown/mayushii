@@ -26,7 +26,7 @@ module.exports = {
             });
     },
     uploadImg: function(args){
-        if(tags === undefined || tags === undefined){
+        if(args[1] === undefined || args[1] === undefined){
             sendMessage("Tuturuu~ Please enter one URL and at least one tag (!help for formatting)");
         }
         else{

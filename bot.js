@@ -68,11 +68,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             gamble.updateMessages(collectionName, url, result[0]._id, (result[0].numberofmessages + 1));
         }
     });
-    gamble.getUser(collectionName, url, userID).then(function(result, err){
-        if(result[0] !== undefined){
-            console.log(result[0]);
-        }
-    });
 
     const prefix = serverData.getPrefix(collectionName, url); 
     prefix.then(function(prefix){//Get the prefix 
