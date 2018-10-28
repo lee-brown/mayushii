@@ -37,7 +37,7 @@ module.exports = {
             }
             axios.post('https://nekobooru.xyz/api/posts/',
             {
-                tags: tags,
+                tags: temparray,
                 safety: 'safe',
                 contentUrl: args[0]
             },

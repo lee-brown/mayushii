@@ -16,7 +16,6 @@ var tools = require('./tools.js');
 var gamble = require('./gambling.js')
 var texts = require('./text.js');
 
-
 // Configure logger settings
 logger.remove(logger.transports.Console);
 logger.add(new logger.transports.Console, {
@@ -29,38 +28,50 @@ var bot = new Discord.Client({
    token: auth.token,
    autorun: true
 });
-
 bot.on('ready', function (evt) {
     logger.info('Connected');
     logger.info('Logged in as: ');
     logger.info(bot.username + ' - (' + bot.id + ')');
 });
+
+//Mongo variables
 var collectionName; 
 var url = "mongodb://localhost:27017/";
-schedule.scheduleJob('*/1 * * * *', () => { 
-    console.log("ooo");
-    var query = { projection: { _id: 0, user: 1, username: 1, credits: 1} } 
-        const found = database.find(collectionName, url, {}, query);
-        found.then(function(result){
-            for(i=0;i<result.length;i++){
-                gamble.getCredits(collectionName, url, result[i].user).then(function(result2, err){
-                    console.log(result2);
-                    if(result[0].dailyactivity == true){
-                        gamble.updateActivity(collectionName, url, result2[0].id,userID, result[i].credits ,false);
-                        gamble.addCredits(collectionName, url, userID, 50);
-                    }
-                });
-            }
-        });
- }) 
+
 bot.on('message', function (user, userID, channelID, message, evt) {
     if(collectionName == undefined){
         var serverID = bot.channels[channelID].guild_id;
         collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
+
+        //Schedule daily rewards for active users
+        schedule.scheduleJob('0 5 * * *', () => { 
+            gamble.getAllUsers(collectionName, url).then(function(result){
+                gamble.getUser(collectionName, url, result[0].user).then(function(result2){
+                    for(i=0;i<result2.length;i++){
+                        gamble.getUser(collectionName, url, result2[i].user).then(function(result2, err){
+                            if(result2[0].dailyactivity == 1){
+                                gamble.updateActivity(collectionName, url, result2[0]._id , 0);
+                                gamble.addCreditsDirect(collectionName, url, userID, 50);
+                                gamble.updateTotalActivity(collectionName, url, result[0]._id, (result[0].daysofactivity + 1));
+                            }
+                        });
+                    }
+                });
+            });
+        }) 
     }
-    
-    gamble.getCredits(collectionName, url, userID).then(function(result, err){
-        gamble.updateActivity(collectionName, url, result[0].id, userID, result[0].credits ,true);
+
+    //Tag daily active users as active
+    gamble.getUser(collectionName, url, userID).then(function(result, err){
+        if(result[0] !== undefined){
+            gamble.updateActivity(collectionName, url, result[0]._id ,1);
+            gamble.updateMessages(collectionName, url, result[0]._id, (result[0].numberofmessages + 1));
+        }
+    });
+    gamble.getUser(collectionName, url, userID).then(function(result, err){
+        if(result[0] !== undefined){
+            console.log(result[0]);
+        }
     });
 
     const prefix = serverData.getPrefix(collectionName, url); 
@@ -75,7 +86,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 message: message
             });
         }
-        sendTwoInOrder = function(message, message2){
+        sendTwoInOrder = function(message, message2){ //Sends two messages in order
             bot.sendMessage({
                 to: channelID,
                 message: message
@@ -125,12 +136,16 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             });
         }
 
-        var defaultCommands = require('./default-commands.json'); //Insert default commands if they dont already exist
+        //Insert default commands if they dont already exist
+        var defaultCommands = require('./default-commands.json'); 
         for(i = 0; i < defaultCommands.cmds.length; i++){
             database.insertCMD(collectionName, url, defaultCommands.cmds[i]);
         } 
+        //Insert user if not exists
         if(user != undefined){
-            database.insertUser(collectionName, url, {user: userID, username: user, credits: 1000, dailyactivity: false});//Insert user if not exists
+            if(userID != undefined){
+                database.insertUser(collectionName, url, {dailyactivity: 0, daysofactivity: 0, numberofmessages: 0, user: userID, username: user, credits: 1000});
+            }
         }
 
         //Get args and format message 
@@ -142,7 +157,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             var formatted = "``" + prefix + arg + "`` "
             return formatted;
         }
-        //Commands that can't be affected by a new prefix
+
+        //Special commands that can't be affected by a new prefix (Because they help with recovering the bot in the event of a misconfiguration)
         if(args[0] === '!setprefix' && args[1] !== undefined){//Prefix for !setprefix doesnt change
             serverData.setPrefix(args);
         }
@@ -155,20 +171,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 sendMessage("The current prefix is " + "``" + prefix + "``");
             })
         }
+
+        //Normal commands
         else if (args[0] === (prefix + command)) { //If message contains prefix
             args.shift(); //Remove cmd from args array
-            function addUserId(originaltext, target){ //Replaces @user and @target with actual target and user tags
-                newtext = originaltext.replace("@user", "<@!" + userID + ">");
-                if(args[0] !== undefined){
-                    newtext = newtext.replace("@target", target);
-                }
-                else {
-                    if(newtext.includes("@target")){
-                        newtext = "";
-                    }
-                }
-                return newtext;
-            } 
+            
             if(command === 'help')
             {   
                 help.generalHelp(collectionName, url, image);
@@ -255,7 +262,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }
             else if(command === 'upload'){
-                neko.uploadImg(args)
+                neko.uploadImg(args);
             }
             else if (command === 'eval'){
                 wolfram.getEmbed(argsString);
@@ -390,12 +397,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 typeExists = true;
                             }
                             if(tagsExists && textExists){
-                                resultTextString = addUserId(resultTextString, args[0]); //replace @target and @user
+                                resultTextString = tools.addUserId(resultTextString, args[0]); //replace @target and @user
                                 sendMessage(resultTextString);
                                 neko.getRandomImg(resultTagsString);
                             }
                             else if(!tagsExists && textExists){
-                                resultTextString = addUserId(resultTextString, args[0]);//replace @target and @user
+                                resultTextString = tools.addUserId(resultTextString, args[0]);//replace @target and @user
                                 sendMessage(resultTextString);
                             }
                             else if(tagsExists && !textExists){

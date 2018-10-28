@@ -20,24 +20,6 @@ module.exports = {
     insert: function(collectionName, url, query){ //Inserts one item
         return insert(collectionName, url, query, query2);
     },
-    upsert: function(collectionName, url, query, query2){
-        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
-            if (err) throw err;
-            var dbo = db.db("mayushii");
-            dbo.collection(collectionName).updateOne(
-                    query,
-                    query2,
-                    {upsert: true, safe: false},
-                    function(err,data){
-                        if (err){
-                            console.log(err);
-                        }else{
-                            console.log("score succeded");
-                        }
-                    }
-                );
-            });
-    },
     update: function(collectionName, url, query, newvalues){//Updates one item with certain _id (query = _id object)
         MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
             if (err) throw err;
@@ -55,7 +37,6 @@ module.exports = {
             dbo.collection(collectionName).replaceOne(
                 query,
                 newvalues, function(err, res) {
-                    console.log(res);
                     if (err) throw err;
                     db.close();
                 }
@@ -106,10 +87,9 @@ module.exports = {
         var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray, subreddit: subreddits, type: type };
         insertIfNotExist(collectionName, url, query, toInsert); 
     },
-    insertUser: function(collectionName, url, singlecommand){ 
-        var query = {  user: singlecommand.user, username: singlecommand.username};
-        var toInsert = { user: singlecommand.user, username: singlecommand.username, credits: singlecommand.credits };
-        insertIfNotExist(collectionName, url, query, toInsert); 
+    insertUser: function(collectionName, url, userObject){ 
+        var query = {  user: userObject.user};
+        insertIfNotExist(collectionName, url, query, userObject); 
     },
     getCmds: function(collectionName, url, typeOfCmd){ //Returns cmd names (typeOfCmd is a string either "custom" or "default" or "all")
     return new Promise(function(res, rej) {

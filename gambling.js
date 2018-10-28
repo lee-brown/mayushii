@@ -26,7 +26,7 @@ module.exports = {
     },
     
     coinFlip: function(collectionName, url, userID, userBet, betAmount){ 
-        getCredits(collectionName, url, userID).then(function(result, err){
+        this.getUser(collectionName, url, userID).then(function(result, err){
             var possiblities = ["heads", "tails"];
             if(betAmount == undefined || betAmount == ""){
                 betAmount = 100;
@@ -57,7 +57,7 @@ module.exports = {
         });
     },
     slots: function(collectionName, url, userID){
-        getCredits(collectionName, url, userID).then(function(result, err){
+        this.getUser(collectionName, url, userID).then(function(result, err){
             var possiblities = ["🍉", "🍒", " :seven: ", "🔔", "🍋"];
             var betAmount = 50;
             var credits = result[0].credits - betAmount;
@@ -124,8 +124,7 @@ module.exports = {
     addCredits: function(collectionName, url, args){
         var user = args[0];
         user = user.replace(/<|>|@/g, '');
-        console.log("oh no");
-        getCredits(collectionName, url, user).then(function(result, err){
+        this.getUser(collectionName, url, user).then(function(result, err){
             if(result.length == 0){
                 sendMessage("User could not be found...");
             }
@@ -141,16 +140,15 @@ module.exports = {
             }
         });
     },
-    addCredits: function(collectionName, url, userID, credits){
-        console.log("wew");
-        getCredits(collectionName, url, userID).then(function(result, err){
+    addCreditsDirect: function(collectionName, url, userID, credits){
+        this.getUser(collectionName, url, userID).then(function(result, err){
             if(result.length == 0){
                 sendMessage("User could not be found...");
             }
             else{
                 var newcredits = result[0].credits;
                 newcredits += credits;
-                updateCredits(collectionName, url, result[0].id, userID, newcredits);
+                updateCredits(collectionName, url, result[0]._id, userID, newcredits);
             }
         });
     },
@@ -198,7 +196,7 @@ module.exports = {
         else{
             targetUserId = targetUserId.replace(/<|>|@/g, '');
             //update gifter
-            getCredits(collectionName, url, userID).then(function(result, err){
+            this.getUser(collectionName, url, userID).then(function(result, err){
                 var credits = result[0].credits - giftAmount;
                 if(Math.sign(credits) == -1){
                     sendMessage("You dont have enough credits!")
@@ -206,7 +204,7 @@ module.exports = {
                 else{
                     updateCredits(collectionName, url, result[0].id, userID, credits);
                     //update target
-                    getCredits(collectionName, url, targetUserId).then(function(result, err){
+                    this.getUser(collectionName, url, targetUserId).then(function(result, err){
                         var credits = result[0].credits + giftAmount;
                         updateCredits(collectionName, url, result[0].id, targetUserId, credits);
                     });
@@ -215,19 +213,22 @@ module.exports = {
             });
         }
     },
-    updateActivity: function(collectionName, url, id, newCredits, activity){
-        return updateActivity(collectionName, url, id, newCredits, activity)
+    updateActivity: function(collectionName, url, id, activity){
+        database.update(collectionName, url, {_id: id}, {$set: {dailyactivity: activity}} );
     },
-    getCredits: function(collectionName, url, userID){
-        return getCredits(collectionName, url, userID);
-    }
-}
-getCredits = function(collectionName, url, userID){
-    return database.find(collectionName, url, { user: userID });
+    updateMessages: function(collectionName, url, id, number){
+        database.update(collectionName, url, {_id: id}, {$set: {numberofmessages: number}} );
+    },
+    updateTotalActivity: function(collectionName, url, id, number){
+        database.update(collectionName, url, {_id: id}, {$set: {daysofactivity: number}} );
+    },
+    getAllUsers: function(collectionName, url){ //Returns a list of all users
+        return database.find(collectionName, url, {}, { projection: { _id: 0, user: 1 } });
+    },
+    getUser: function(collectionName, url, userID){ //Gets details for a specific user
+        return database.find(collectionName, url, { user: userID }, { } );
+    },
 }
 updateCredits = function(collectionName, url, id, userID, newCredits){
-    database.update(collectionName, url, {user: userID}, {$set: {user: userID, credits: newCredits}} )
-}
-updateActivity = function(collectionName, url, id,userID, newCredits, activity){
-    database.update(collectionName, url, {_id: id}, {$set: {user: userID, credits: newCredits, dailyactivity: activity}} )
+    database.update(collectionName, url, {user: userID}, {$set: {credits: newCredits}} )
 }
