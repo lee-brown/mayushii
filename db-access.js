@@ -1,7 +1,6 @@
 var mongo = require('mongodb');
 var Promise = require("bluebird");
 var MongoClient = mongo.MongoClient;
-var database = require('./db-access.js');
 var tools = require('./tools.js');
 module.exports = {
     initial: function(collectionName, url){
@@ -18,7 +17,7 @@ module.exports = {
         return find(collectionName, url, query, query2);
     },
     insert: function(collectionName, url, query){ //Inserts one item
-        return insert(collectionName, url, query, query2);
+        return insert(collectionName, url, query);
     },
     update: function(collectionName, url, query, newvalues){//Updates one item with certain _id (query = _id object)
         MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
@@ -60,6 +59,15 @@ module.exports = {
             if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).drop(function(err, delOK) {
+                if (err) throw err;
+                if (delOK) console.log("Collection deleted");
+                db.close();
+            });
+        });
+        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
+            if (err) throw err;
+            var dbo = db.db("mayushii");
+            dbo.collection("playlists").drop(function(err, delOK) {
                 if (err) throw err;
                 if (delOK) console.log("Collection deleted");
                 db.close();

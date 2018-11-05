@@ -22,7 +22,7 @@ module.exports = {
                 })
             })
             .catch(err =>{
-                console.log(err);
+                sendMessage("Tuturuu~ An error occured: " + err.response.data.description);
             });
     },
     uploadImg: function(args){
@@ -47,7 +47,7 @@ module.exports = {
                     'Accept': 'application/json',     
                 },    
             })
-            .then(function (response){
+            .then(function(response, err){
                 let message = "Tuturuu~ File uploaded from URL: ``" + args[0] + "`` with tags: ";
                 for(i = 1; i < args.length; i++){
                     message += ', ' + args[i]
@@ -55,8 +55,7 @@ module.exports = {
                 sendMessage(message);
             })
             .catch(function (error) { 
-                sendMessage("Tuturuu~ An error occured");
-                console.log(err);
+                sendMessage("Tuturuu~ An error occured: " + error.response.data.description);
             });
         }
     },
@@ -85,8 +84,7 @@ module.exports = {
                 logger.info("A new tag was created on nekobooru.xyz");
             })
             .catch(function (error) { 
-                sendMessage("Tuturuu~ An error occured");
-                console.log(err);
+                sendMessage("Tuturuu~ An error occured: " + error.response.data.description);
             });
         }
         
@@ -104,7 +102,7 @@ module.exports = {
             axios.post('https://nekobooru.xyz/api/tags/', {
             names: temparray,
             category: args[0]
-        },{
+            },{
                 headers:{
                     'Authorization': nekobooruToken,
                     'Content-Type': 'application/json',
@@ -116,8 +114,7 @@ module.exports = {
                 logger.info("New tag category created on nekobooru.xyz");
             })
             .catch(function (error) { 
-                sendMessage("Tuturuu~ An error occured");
-                console.log(err);
+                sendMessage("Tuturuu~ An error occured: " + error.response.data.description);
             });
         }
         

@@ -298,6 +298,26 @@ module.exports = {
             sendMessage("Invalid id");
         }
     },
+    getPlaylist: function(collectionName, url, playlistID){
+        return new Promise(function(res, rej) {
+            var query =  { playlistid: playlistID} 
+            const found = database.find(collectionName, url, query);
+            found.then(function(result){
+                if(result.length === 0){
+                    res(undefined);
+                }
+                else{
+                    res(result[0].playlist);
+                }
+            });
+        }).catch({code: "An error occured: getPlaylist()"}, function(err) {
+            console.log(err);
+        });
+    },
+    newPlaylist: function(collectionName, url, playlistID, playlist){
+        thingToPass = {playlistid: playlistID, playlist: playlist };
+        database.insert(collectionName, url, thingToPass); 
+    },
     lsCmdName: function(collectionName, url,args){
         var query = { cmd: tools.removeSpaces(args[0]) };
         const found = database.find(collectionName, url,query);

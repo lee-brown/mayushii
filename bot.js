@@ -24,7 +24,7 @@ logger.add(new logger.transports.Console, {
 logger.level = 'debug';
 
 // Initialize Discord Bot
-var bot = new Discord.Client({
+bot = new Discord.Client({
    token: auth.token,
    autorun: true
 });
@@ -34,15 +34,19 @@ bot.on('ready', function (evt) {
     logger.info(bot.username + ' - (' + bot.id + ')');
 });
 
+//Contains music players for each server
+Players = new Object;
+
 //Mongo variables
 var collectionName; 
 var url = "mongodb://localhost:27017/";
+var voice = require('./voice.js');
 
 bot.on('message', function (user, userID, channelID, message, evt) {
     if(collectionName == undefined){
         var serverID = bot.channels[channelID].guild_id;
         collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
-
+        
         //Schedule daily rewards for active users
         schedule.scheduleJob('0 5 * * *', () => { 
             gamble.getAllUsers(collectionName, url).then(function(result){
@@ -60,7 +64,13 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             });
         }) 
     }
-
+    var userVoiceChannelId;
+    if(bot.servers[collectionName].members[userID] !== undefined) {
+        userVoiceChannelId= bot.servers[collectionName].members[userID].voice_channel_id;
+    }
+    else{
+        console.log("could not find user" + userID);
+    }
     //Tag daily active users as active
     gamble.getUser(collectionName, url, userID).then(function(result, err){
         if(result[0] !== undefined){
@@ -136,6 +146,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         for(i = 0; i < defaultCommands.cmds.length; i++){
             database.insertCMD(collectionName, url, defaultCommands.cmds[i]);
         } 
+
         //Insert user if not exists
         if(user != undefined){
             if(userID != undefined){
@@ -171,11 +182,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         else if (args[0] === (prefix + command)) { //If message contains prefix
             args.shift(); //Remove cmd from args array
             
-            if(command === 'help')
-            {   
-                help.generalHelp(collectionName, url, image);
-            }    
-            else if(command === 'setimage' && args[0] !== undefined){//Prefix for !setprefix doesnt change
+            //Customization commands
+            if(command === 'setimage' && args[0] !== undefined){//Prefix for !setprefix doesnt change
                 serverData.setImage(args);
             }
             else if(command === 'setcolor' && args[0] !== undefined){//Prefix for !setprefix doesnt change
@@ -187,6 +195,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     database.insertCMD(collectionName, url,ztsCommands.cmds[i]);
                 }
             }
+
+            //Reddit Commands
             else if(command === "rimg" && args[0] !== undefined){
                 var got = reddit.getHot(args[0]);
                 got.then(function(posts){
@@ -199,9 +209,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     reddit.printPost(posts);
                 })
             }
-            else if(command === "vote" && args[0] !== undefined){
-                fun.vote(userID, bot.users[userID].avatar, bot.users[userID].username, argsString);
-            }
+            
+            //Help commands
             else if(command === "help-customcmd"){
                 help.customCmdsHelp(image);
             }
@@ -211,17 +220,17 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === "help-nekobooru"){
                 help.nekoHelp(image);
             }
+            else if(command === 'help')
+            {   
+                help.generalHelp(collectionName, url, image);
+            }   
+
+            //Fun/useful commands
             else if(command === 'rps'){
                 fun.rps();
             }
             else if(command === 'say'){
                 fun.say(argsString, args, userID);
-            }
-            else if(command === 'add-admin' && perms.permissions(userID, ['admin']) && args[0] !== undefined){
-                perms.addAdmin(args[0]);
-            }
-            else if(command === 'add-poweruser' && perms.permissions(userID, ['admin', 'power user']) && args[0] !== undefined){
-                perms.addPowerUser(args[0]);
             }
             else if(command === 'bigsay' && args[0] !== undefined){
                 fun.bigsay(argsString);
@@ -232,6 +241,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'rate'){
                 fun.rate();
             }
+            else if(command === "vote" && args[0] !== undefined){
+                fun.vote(userID, bot.users[userID].avatar, bot.users[userID].username, argsString);
+            }
+
+            //Permissions
+            else if(command === 'add-admin' && perms.permissions(userID, ['admin']) && args[0] !== undefined){
+                perms.addAdmin(args[0]);
+            }
+            else if(command === 'add-poweruser' && perms.permissions(userID, ['admin', 'power user']) && args[0] !== undefined){
+                perms.addPowerUser(args[0]);
+            }
+
+            //Custom cmds
             else if(command === 'newcmd'){
                 serverData.newCmd(collectionName, url, message.substring(1));
             }
@@ -256,25 +278,17 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                     sendMessage(finalmessage);
                 });
             }
-            else if(command === 'upload'){
-                neko.uploadImg(args);
-            }
+            
             else if (command === 'eval'){
                 wolfram.getEmbed(argsString);
             }
-            else if (command === 'suggest'){
-                var stringtoadd = "\nSuggestions of user: " + user + " - " + userID + "\n";
-                stringtoadd = stringtoadd + argsString;
-                fs.appendFile('suggestions.txt', stringtoadd , function (err) {
-                if (err){
-                    logger.error(err);
-                    throw err;
-                } 
-                });
-                sendMessage("Tuturuu~ Thank you for your suggestion");
-            }
+
+            //Nekobooru commands
             else if (command === 'newtag' && perms.permissions(userID, ['power user', 'admin'])){
                 neko.newTag(args);
+            }
+            else if(command === 'upload'){
+                neko.uploadImg(args);
             }
             else if ((command === "updatecmd-text" || command === "updatecmd-tag"| command === "updatecmd-subr") && argsString.includes("|") && args[0] !== undefined){ //<id> | <tags>
                 serverData.updateCmd(command, argsString);
@@ -301,18 +315,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if (command === 'newtagcategory' && (powerUser(userID) || adminUser(userID))){
                 neko.newCategory(args);
             }
-            else if (command === 'credits'){
-                gamble.printCredits(collectionName, url, userID);
-            }
-            else if (command === 'gambleflip'){
-                gamble.coinFlip(collectionName, url, userID, args[0], args[1]);
-            }
-            else if(command === 'slots'){
-                gamble.slots(collectionName, url, userID);
-            }
-            else if (command === 'addcredits' && perms.permissions(userID, ['admin'])){
-                gamble.addCredits(collectionName, url, args);
-            }
+            
+
+            //Fancy Text
             else if(command === 'fancy'){
                 texts.handwriting(argsString);
             }
@@ -331,6 +336,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'bubble'){
                 texts.bubble(argsString);
             }
+
+            //Economy/gambling
             else if(command === 'help-gamble'){
                 help.gambleHelp(image);
             }
@@ -346,6 +353,76 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'gift' && perms.permissions(userID, ['admin'])){
                 gamble.gift(collectionName, url, userID, args);
             }
+            else if (command === 'credits'){
+                gamble.printCredits(collectionName, url, userID);
+            }
+            else if (command === 'gambleflip'){
+                gamble.coinFlip(collectionName, url, userID, args[0], args[1]);
+            }
+            else if(command === 'slots'){
+                gamble.slots(collectionName, url, userID);
+            }
+            else if (command === 'addcredits' && perms.permissions(userID, ['admin'])){
+                gamble.addCredits(collectionName, url, args);
+            }
+
+            //Voice chat 
+            else if(command === 'join'){
+                if(userVoiceChannelId !== undefined){
+                    bot.joinVoiceChannel(userVoiceChannelId);
+                }
+                else{
+                    sendMessage("You must be in the voice channel to make the bot join");
+                }
+            }
+            else if(command == 'leave'){
+                if(userVoiceChannelId !== undefined){
+                    bot.leaveVoiceChannel(userVoiceChannelId);
+                }
+                else{
+                    sendMessage("You must be in the voice channel to make the bot leave");
+                }
+            }
+            else if(command == 'play'){
+                if(userVoiceChannelId !== undefined){
+                    bot.joinVoiceChannel(userVoiceChannelId, function(error, events) {
+                        //Playlist
+                        if(args[0].includes("list=")){   
+                           voice.playlist(args,collectionName,userVoiceChannelId);
+                        }
+                        else if (result.hostname){
+                            voice.url(args,collectionName,userVoiceChannelId);
+                        } 
+                        else{ 
+                            voice.search(argsString,collectionName,userVoiceChannelId);
+                        }
+                    });
+                }
+                else{
+                    sendMessage("You must be in the voice channel to play music");
+                }  
+            }
+            else if(command == 'stop'){
+                voice.stop(collectionName);
+            }
+            else if(command == 'skip'){
+                voice.skip(collectionName);
+            }
+
+            //Other
+            else if (command === 'suggest'){
+                var stringtoadd = "\nSuggestions of user: " + user + " - " + userID + "\n";
+                stringtoadd = stringtoadd + argsString;
+                fs.appendFile('suggestions.txt', stringtoadd , function (err) {
+                if (err){
+                    logger.error(err);
+                    throw err;
+                } 
+                });
+                sendMessage("Tuturuu~ Thank you for your suggestion");
+            }
+
+            //Catch all
             else {
                 try{
                     var query = { cmd: tools.removeSpaces(command) };
