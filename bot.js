@@ -44,6 +44,7 @@ var voice = require('./voice.js');
 
 bot.on('message', function (user, userID, channelID, message, evt) {
     if(collectionName == undefined){
+        console.log(channelID);
         var serverID = bot.channels[channelID].guild_id;
         collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
         
@@ -66,10 +67,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     }
     var userVoiceChannelId;
     if(bot.servers[collectionName].members[userID] !== undefined) {
+        
         userVoiceChannelId= bot.servers[collectionName].members[userID].voice_channel_id;
     }
     else{
-        console.log("could not find user" + userID);
+        console.log("user not in vc")
     }
     //Tag daily active users as active
     gamble.getUser(collectionName, url, userID).then(function(result, err){
@@ -255,10 +257,10 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 
             //Custom cmds
             else if(command === 'newcmd'){
-                serverData.newCmd(collectionName, url, message.substring(1));
+                serverData.newCmd(collectionName, url, argsString);
             }
             else if(command === 'newcmdr'){ //<cmd> | <subreddits> | text post / image post
-                serverData.newCmdr(collectionName, url, message.substring(1));
+                serverData.newCmdr(collectionName, url, argsString);
             }
             else if (command === 'ls-allcmds'){ 
                 const defaultCmds = database.getCmds(collectionName, url,"all"); 

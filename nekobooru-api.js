@@ -49,9 +49,12 @@ module.exports = {
             })
             .then(function(response, err){
                 let message = "Tuturuu~ File uploaded from URL: ``" + args[0] + "`` with tags: ";
-                for(i = 1; i < args.length; i++){
-                    message += ', ' + args[i]
-                }  
+                message += args[i];
+                if(args.length >= 2){
+                    for(i = 2; i < args.length; i++){
+                        message += ', ' + args[i]
+                    }  
+                }
                 sendMessage(message);
             })
             .catch(function (error) { 
