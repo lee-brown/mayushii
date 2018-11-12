@@ -123,8 +123,8 @@ module.exports = {
         }
     },
     newCmd: function(collectionName, url, argstring){
-        argstring = message.split("!newcmd ");
-        argstring = argstring[1];
+        console.log("test");
+        console.log(argstring);
         argstring = argstring.split('|');
         var tagsArray = undefined;
         var textArray = undefined;
@@ -138,11 +138,10 @@ module.exports = {
             textArray = argstring[2].split('&');
         }
         thingToPass = {cmd: argstring[0], tags: tagsArray, texts: textArray };
+        console.log(thingToPass);
         database.insert(collectionName, url, thingToPass); 
     },
     newCmdr: function(collectionName, url, argstring){
-        argstring = message.split("!newcmdr ");
-        argstring = argstring[1];
         argstring = argstring.split('|');
         var subreddits = undefined;
         var type = undefined;

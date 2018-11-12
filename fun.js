@@ -50,6 +50,7 @@ module.exports = {
     },
     say: function(input,args, userID){
         //Check if text contains a command (only admins should have the power to do this)
+        var containscommand;
         if(input.length > 0){
             if(input[0] == '!'){
                 containscommand = true;
