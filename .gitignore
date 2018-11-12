@@ -1,1 +1,5 @@
 auth.json
+node_modules
+auth-nekobooru.json
+auth-wolframalpha.json
+.env
