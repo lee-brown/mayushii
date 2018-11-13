@@ -43,8 +43,11 @@ var url = "mongodb://localhost:27017/";
 var voice = require('./voice.js');
 
 bot.on('message', function (user, userID, channelID, message, evt) {
+    bot.setPresence({
+        idle_since: null,
+        game: {name: "!help", type: 0, url: null},
+    });
     if(collectionName == undefined){
-        console.log(channelID);
         var serverID = bot.channels[channelID].guild_id;
         collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
         
@@ -67,12 +70,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
     }
     var userVoiceChannelId;
     if(bot.servers[collectionName].members[userID] !== undefined) {
-        
         userVoiceChannelId= bot.servers[collectionName].members[userID].voice_channel_id;
     }
-    else{
-        console.log("user not in vc")
-    }
+
     //Tag daily active users as active
     gamble.getUser(collectionName, url, userID).then(function(result, err){
         if(result[0] !== undefined){
@@ -372,6 +372,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'join'){
                 if(userVoiceChannelId !== undefined){
                     bot.joinVoiceChannel(userVoiceChannelId);
+                    if(Players[collectionName] != undefined){
+                        Players[collectionName].currentChannelID = userVoiceChannelId;
+                    }
                 }
                 else{
                     sendMessage("You must be in the voice channel to make the bot join");
@@ -379,6 +382,9 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             }
             else if(command == 'leave'){
                 if(userVoiceChannelId !== undefined){
+                    if(Players[collectionName] != undefined){
+                        voice.stop(collectionName);
+                    }
                     bot.leaveVoiceChannel(userVoiceChannelId);
                 }
                 else{
@@ -388,7 +394,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command == 'play'){
                 if(userVoiceChannelId !== undefined){
                     bot.joinVoiceChannel(userVoiceChannelId, function(error, events) {
-                        //Playlist
                         if(args[0].includes("list=")){   
                            voice.playlist(args,collectionName,userVoiceChannelId);
                         }
@@ -409,6 +414,36 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             }
             else if(command == 'skip'){
                 voice.skip(collectionName);
+            }
+            else if(command == 'moveallhere' && perms.permissions(userID, ['admin', 'power user'])){
+                bot2 = new Discord.Client({
+                    token: auth.token,
+                    autorun: true
+                 });
+                 bot2.on('ready', function(evt){
+                    var status;
+                    if(userVoiceChannelId !== undefined){
+                        for(var propertyName in bot.servers[collectionName].members) {
+                            if(bot2.servers[collectionName].members[propertyName].voice_channel_id !== undefined){
+                                bot.joinVoiceChannel(userVoiceChannelId);
+                                bot.moveUserTo({
+                                    serverID: collectionName,
+                                    userID: propertyName.toString(),
+                                    channelID: userVoiceChannelId,
+                                }, function(err){
+                                    console.log(err.response);
+                                    if(err.response.statusCode == 50013){
+                                        
+                                        status = 50013;
+                                    }
+                                });
+                            }
+                        }
+                    }
+                    if(status == 50013){
+                        sendMessage("I have insufficient privileges to do that");
+                    }
+                })
             }
 
             //Other
