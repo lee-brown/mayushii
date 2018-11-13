@@ -56,14 +56,18 @@ module.exports = {
         });
     },
     stop: function(collectionName){
-        console.log("calling stop");
         stop(Players[collectionName],collectionName);
     },
     skip: function(collectionName){
-        console.log("calling skip");
         skip(Players[collectionName]);
         resume(Players[collectionName]);
         Players[collectionName].playing = false;
+    },
+    pause: function(collectionName){
+        pause(Players[collectionName]);
+    },
+    resume: function(collectionName){
+        resume(Players[collectionName]);
     }
 }
 YTTimeToSeconds = function(data1){//Convert duration hours:minutes:seconds into seconds
@@ -82,7 +86,6 @@ YTTimeToSeconds = function(data1){//Convert duration hours:minutes:seconds into 
     else{//less than minute
         duration = parseInt(data1);
     }
-    console.log("returning data: " + duration);
     return duration;
 }
 resume = function(player){
@@ -95,6 +98,7 @@ skip = function(player){
         stream.stop();  
     });
 }
+
 start = function(collectionName, player){
     if(player.playing == undefined){
         //Clean any force stops
@@ -105,22 +109,19 @@ start = function(collectionName, player){
             //console.log(player);
             if(player.audioStack[0] !== undefined && player.songLength[0] !== undefined && !player.playing){ 
                 player.playing = true;
+                resume(Players[collectionName]);
                 var output = '"' + './audio/' + collectionName + '.%(ext)s'+ '"';
                 var exec = require('child_process').exec;
                 exec('youtube-dl -f 251 ' + " -o " + output + " " + player.audioStack[0]); //Download file
                 if (fs.existsSync("./audio/" + collectionName  + ".webm")) {//Remove file if it exists
-                    console.log("Playing "  + player.audioStack[0]);
-                    console.log("Length "  + player.songLength[0]);
                     if(player.songLength[0] > 1000){
                         console.log("Video too long");
                     }
                     else if (player.songLength[0] < 1000){ //Play the song
                         player.audiofile = fs.createReadStream("./audio/" + collectionName + ".webm");
-                        console.log("Calling play");
                         play(player);
                         player.audioStack.shift();
                         player.songLength.shift();
-                        console.log(player.currentChannelID);
                         playnext(player, collectionName);
                     }
                 }
@@ -135,8 +136,8 @@ start = function(collectionName, player){
 playnext = function(player, collectionName){
     bot.getAudioContext(player.currentChannelID, function(error, stream) {
         stream.on('done', function () {
-            console.log("Finished song");
             player.playing = false;
+            stream.stop();
             if (fs.existsSync("./audio/" + collectionName  + ".webm")) {//Remove file if it exists
                 fs.unlinkSync("./audio/" + collectionName  + ".webm");
             }
@@ -144,7 +145,6 @@ playnext = function(player, collectionName){
     });
 }
 stop = function(player){
-    console.log(player.currentChannelID);
     bot.getAudioContext(player.currentChannelID, function(error, stream) {
         if (error){
             console.log(error);
@@ -159,9 +159,7 @@ stop = function(player){
     }
 }
 play = function(player){
-    console.log("Attempting file");
     bot.getAudioContext(player.currentChannelID, function(error, stream) {
-        console.log("Playing file");
         if (error){
             console.log(error);
         }
