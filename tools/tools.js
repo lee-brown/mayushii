@@ -5,9 +5,9 @@ module.exports = {
             return item;
         }  
     },
-    addUserId: function(originaltext, target){ //Replaces @user and @target with actual target and user tags
+    addUserId: function(originaltext, target,userID){ //Replaces @user and @target with actual target and user tags
         newtext = originaltext.replace("@user", "<@!" + userID + ">");
-        if(args[0] !== undefined){
+        if(target !== undefined){
             newtext = newtext.replace("@target", target);
         }
         else {

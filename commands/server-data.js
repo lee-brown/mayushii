@@ -1,5 +1,6 @@
-var database = require('./db-access.js');
-var tools = require('./tools.js');
+//Create/modify/delete certain objects in the database
+var database = require('../db/db-access.js')
+    , tools = require('../tools/tools.js');
 module.exports = {
     setPrefix: function(args){
         args[1] = tools.removeSpaces(args[1]);
@@ -23,6 +24,14 @@ module.exports = {
             }
             
         })
+    },
+    getMetaData: function(collectionName, url){
+        var query = { projection: { _id: 0, cmdprefix: 1} }
+        const found = database.find(collectionName, url, {}, query);
+        found.then(function(result){
+            console.log(result)
+        });
+        
     },
     getPrefix: function(collectionName, url){
         return new Promise(function(res, rej) {
@@ -228,6 +237,9 @@ module.exports = {
         {
             sendMessage("Invalid id");
         }
+    },
+    deleteByID: function(id){
+        database.delete(collectionName, url, { _id: ObjectId(tools.removeSpaces(id)) });
     },
     delTag: function(command, args){
         try{

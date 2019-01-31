@@ -1,6 +1,7 @@
-var authnekobooru = require('./auth-nekobooru.json');
-var nekobooruToken = "Token " + authnekobooru.token;
-require('./rng.js');
+var authnekobooru = process.env.NEKO_AUTH;
+var tools = require('../tools/tools');
+var nekobooruToken = "Token " + process.env.NEKO_AUTH;
+require('../tools/rng');
 const axios = require('axios');
 module.exports = {
     getRandomImg: function (tags){ 
@@ -26,7 +27,18 @@ module.exports = {
             });
     },
     uploadImg: function(args){
-        if(args[1] === undefined || args[1] === undefined){
+        
+        var extensionType = "image"
+        var extension = tools.removeSpaces(args[0].slice(-3))
+        var extensions = ["png","jpg","tif","jpeg","tiff"]
+        if(extension === "gif"){
+            extensionType = "animation"
+        }
+        else if(!extensions.includes(extension)){
+            sendMessage("Warning, could not detect file type or unsupported file type");
+        }
+        console.log(extensionType);
+        if(args[0] === undefined || args[1] === undefined){
             sendMessage("Tuturuu~ Please enter one URL and at least one tag (!help for formatting)");
         }
         else{
@@ -37,6 +49,7 @@ module.exports = {
             }
             axios.post('https://nekobooru.xyz/api/posts/',
             {
+                type: extensionType,
                 tags: temparray,
                 safety: 'safe',
                 contentUrl: args[0]
@@ -45,11 +58,13 @@ module.exports = {
                     'Authorization': nekobooruToken,
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',     
-                },    
+                },
             })
             .then(function(response, err){
                 let message = "Tuturuu~ File uploaded from URL: ``" + args[0] + "`` with tags: ";
-                message += args[i];
+                for(i=0;i<args.length;i++){
+                    message += args[i];
+                }
                 if(args.length >= 2){
                     for(i = 2; i < args.length; i++){
                         message += ', ' + args[i]
@@ -58,7 +73,7 @@ module.exports = {
                 sendMessage(message);
             })
             .catch(function (error) { 
-                sendMessage("Tuturuu~ An error occured: " + error.response.data.description);
+                sendMessage("Tuturuu~ An error occured: " + error);
             });
         }
     },

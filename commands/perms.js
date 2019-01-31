@@ -13,7 +13,7 @@ module.exports = {
             }
         }
         if(!alreadyexists){
-            fs.appendFile('admin.txt', stringtoadd , function (err) {
+            fs.appendFile('../admin.txt', stringtoadd , function (err) {
                 if (err){
                     logger.error(err);
                     throw err;
@@ -27,7 +27,7 @@ module.exports = {
     addPowerUser: function(id){
         var stringtoadd = id;
         stringtoadd = stringtoadd.replace(/<|>|@/g, '');
-        var dataFromFile = fs.readFileSync('power user' + '.txt');
+        var dataFromFile = fs.readFileSync('../power user' + '.txt');
         var data = dataFromFile.toString();
         var items = data.split('\n');
         var alreadyexists = false;
@@ -37,7 +37,7 @@ module.exports = {
             }
         }
         if(!alreadyexists){
-            fs.appendFile('power user.txt', stringtoadd , function (err) {
+            fs.appendFile('../power user.txt', stringtoadd , function (err) {
                 if (err){
                     logger.error(err);
                     throw err;

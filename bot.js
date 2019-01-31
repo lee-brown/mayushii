@@ -1,20 +1,17 @@
-var schedule = require('node-schedule');
-var Discord = require('discord.io');
-var logger = require('winston');
-var auth = require('./auth.json');
-const fs = require('fs');
-var database = require('./db-access.js');
-var neko = require('./nekobooru-api.js');
-var reddit = require('./reddit-api.js');
-var ObjectId = require('mongodb').ObjectID;
-var wolfram = require('./wolfram-api.js');
-var fun = require('./fun.js');
-var help = require('./help.js');
-var perms = require('./perms.js');
-var serverData = require('./server-data.js');
-var tools = require('./tools.js');
-var gamble = require('./gambling.js')
-var texts = require('./text.js');
+var schedule = require('node-schedule')
+    , Discord = require('discord.io')
+    , logger = require('winston')
+    , database = require('./db/db-access.js')
+    , neko = require('./api/nekobooru-api.js')
+    , reddit = require('./api/reddit-api.js')
+    , wolfram = require('./api/wolfram-api.js')
+    , fun = require('./commands/fun.js')
+    , help = require('./commands/help.js')
+    , perms = require('./commands/perms.js')
+    , serverData = require('./commands/server-data.js') 
+    , tools = require('./tools/tools.js')
+    , gamble = require('./commands/gambling.js') //Economy/gambling functions
+    , texts = require('./commands/text.js'); //Fancy text functions
 
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -25,7 +22,7 @@ logger.level = 'debug';
 
 // Initialize Discord Bot
 bot = new Discord.Client({
-   token: auth.token,
+   token: process.env.DISCORD_AUTH,
    autorun: true
 });
 bot.on('ready', function (evt) {
@@ -38,9 +35,9 @@ bot.on('ready', function (evt) {
 Players = new Object;
 
 //Mongo variables
-var collectionName; 
-var url = "mongodb://localhost:27017/";
-var voice = require('./voice.js');
+var collectionName 
+    , url = "mongodb://localhost:27017/"
+    , voice = require('./tools/voice.js');
 
 bot.on('message', function (user, userID, channelID, message, evt) {
     bot.setPresence({
@@ -113,8 +110,11 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         }
         sendVote = function(richembed){
             richembed.color = color;
-            //attempt to send two reactions at once, one will inevitbily fail, read response for the time to wait (discord rate limiting), once the time is up it sends the reaction again
-            //the wait time changes so it should not be hardcoded - more info here https://discordapp.com/developers/docs/topics/rate-limits#header-format
+            //attempt to send two reactions at once, one will inevitbily fail, 
+            //read response for the time to wait (discord rate limiting), once 
+            //the time is up it sends the reaction again the wait time changes 
+            //so it should not be hardcoded - more info here:
+            // https://discordapp.com/developers/docs/topics/rate-limits#header-format
             bot.sendMessage({ 
                 to: channelID,
                 embed: richembed
@@ -144,7 +144,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         }
 
         //Insert default commands if they dont already exist
-        var defaultCommands = require('./default-commands.json'); 
+        var defaultCommands = require('./json-commands/default-commands.json'); 
         for(i = 0; i < defaultCommands.cmds.length; i++){
             database.insertCMD(collectionName, url, defaultCommands.cmds[i]);
         } 
@@ -281,6 +281,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 });
             }
             
+            //Maths
             else if (command === 'eval'){
                 wolfram.getEmbed(argsString);
             }
@@ -305,7 +306,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 serverData.cmdDetails(args);
             }
             else if (command === "deletecmd"){ //<cmd-id>
-                database.delete(collectionName, url, { _id: ObjectId(tools.removeSpaces(args[0])) });
+                serverData.deleteByID(args[0]);
                 sendMessage("cmd deleted with cmd id " + args[0]);
             }
             else if(command === "lscmdname" && args[0] !== undefined){ //list cmds with the name <cmd-name>
@@ -446,20 +447,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 })
             }
 
-            //Other
-            else if (command === 'suggest'){
-                var stringtoadd = "\nSuggestions of user: " + user + " - " + userID + "\n";
-                stringtoadd = stringtoadd + argsString;
-                fs.appendFile('suggestions.txt', stringtoadd , function (err) {
-                if (err){
-                    logger.error(err);
-                    throw err;
-                } 
-                });
-                sendMessage("Tuturuu~ Thank you for your suggestion");
-            }
-
-            //Catch all
+            //Catch all (Custom cmds)
             else {
                 try{
                     var query = { cmd: tools.removeSpaces(command) };
@@ -506,12 +494,12 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                                 typeExists = true;
                             }
                             if(tagsExists && textExists){
-                                resultTextString = tools.addUserId(resultTextString, args[0]); //replace @target and @user
+                                resultTextString = tools.addUserId(resultTextString, args[0], userID); //replace @target and @user
                                 sendMessage(resultTextString);
                                 neko.getRandomImg(resultTagsString);
                             }
                             else if(!tagsExists && textExists){
-                                resultTextString = tools.addUserId(resultTextString, args[0]);//replace @target and @user
+                                resultTextString = tools.addUserId(resultTextString, args[0], userID);//replace @target and @user
                                 sendMessage(resultTextString);
                             }
                             else if(tagsExists && !textExists){

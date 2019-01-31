@@ -1,6 +1,6 @@
 const fs = require('fs');
-const tools = require('./tools.js');
-require('./bot.js');
+const tools = require('../tools/tools.js');
+require('../bot.js');
 
 module.exports = {
     playlist: function(args, collectionName, userVoiceChannelId){

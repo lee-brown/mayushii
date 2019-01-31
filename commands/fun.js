@@ -1,5 +1,5 @@
 
-require('./rng.js');
+require('../tools/rng.js');
 var Promise = require("bluebird");
 var perms = require('./perms.js');
 module.exports = {

@@ -1,6 +1,6 @@
 require('dotenv').config();
-require('./bot.js');
-require('./rng.js');
+require('../bot');
+require('../tools/rng');
 const Snoowrap = require('snoowrap');
 const r = new Snoowrap({
     userAgent: 'reddit-bot',
@@ -62,5 +62,20 @@ module.exports = {
             };
             sendEmbed(richembed);
         })
+    },
+    getNew: function(subreddit){
+        return new Promise(function(res, err){
+            r.getSubreddit(subreddit).getNew().then(posts => {
+                var posts = posts.toJSON();
+                res(posts);
+            })
+        })
+    },
+    findDeal: function(subreddit, price){ //price is the price that the product should be under
+        var posts = this.getNew(subreddit);
+        for(i=0;i<posts.length;i++){
+            findPrice = posts[i].indexOf("$");
+            post[i].substring(findPrice)
+        }
     }
 }

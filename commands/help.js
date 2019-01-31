@@ -1,10 +1,10 @@
 
 module.exports = {
     generalHelp: function(collectionName, url, image){
-        var database = require('./db-access.js');
+        var database = require('../db/db-access.js');
         const custcmds = database.getCmds(collectionName, url,"custom");
         custcmds.then(function(custcmds){//get customcmds
-            var database = require('./db-access.js');
+            var database = require('../db/db-access.js');
             const defaultcmds = database.getCmds(collectionName, url,"default");
             defaultcmds.then(function(defaultcmds){//get defaultcmds
             var richembed = {

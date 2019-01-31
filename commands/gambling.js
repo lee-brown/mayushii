@@ -1,5 +1,5 @@
-var database = require('./db-access.js');
-require('./rng.js');
+var database = require('../db/db-access.js');
+require('../tools/rng.js');
 module.exports = {
     printCredits: function(collectionName, url, userID){
         const found = database.find(collectionName, url, { user: userID });
@@ -153,7 +153,7 @@ module.exports = {
         });
     },
     printRichList: function(collectionName, url){
-        var query = { projection: { _id: 0, user: 1, username: 1, credits: 1} }
+        var query = { projection: { _id: 0, user: 1, username: 1, credits: 1}}
         const found = database.find(collectionName, url, {}, query);
         found.then(function(result){
             var message = "";
@@ -162,6 +162,21 @@ module.exports = {
             }
             else{
                 message+= "```glsl\n#Server Rich List \n\n"
+
+                var unsorted = true;
+                var counter = 0;
+                while(unsorted){
+                    unsorted = false;
+                    if(counter != result.length){
+                        if(result[counter].credits < result[counter+1].credits){
+                            var temp = result[counter];
+                            result[counter] = result[counter+1];
+                            result[counter+1] = temp;
+                            unsorted = true; 
+                            counter = 0;
+                        }
+                    }
+                }
                 for(i=0;i<result.length;i++){
                     if(i == 0){
                         message+="🏆 "

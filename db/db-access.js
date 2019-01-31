@@ -1,7 +1,7 @@
 var mongo = require('mongodb');
 var Promise = require("bluebird");
 var MongoClient = mongo.MongoClient;
-var tools = require('./tools.js');
+var tools = require('../tools/tools.js');
 module.exports = {
     initial: function(collectionName, url){
         MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
@@ -40,8 +40,6 @@ module.exports = {
                     db.close();
                 }
              );
-            
-
         }); 
     },
     delete: function(collectionName, url, myquery){
@@ -103,7 +101,7 @@ module.exports = {
     return new Promise(function(res, rej) {
         const found = find(collectionName, url, {}, { projection: { _id: 0, cmd: 1} });
         found.then(function(result, err){
-            var defaultCommands = require('./default-commands.json');
+            var defaultCommands = require('../json-commands/default-commands.json');
             var finalmessage = "";
             if (err) throw err;
             var alphabetical = new Array;
@@ -122,9 +120,11 @@ module.exports = {
                     if(result[i].cmd === defaultCommands.cmds[j].cmd){ //If it's a default cmd
                         if(typeOfCmd == "default"){
                             insert = true;
+                            break;
                         }
                         if(typeOfCmd == "custom"){
                             insert = false;
+                            break;
                         }
                     }
                 }
@@ -136,9 +136,15 @@ module.exports = {
             }
             alphabetical.sort();
             for(i =0;i<alphabetical.length;i++){
-                finalmessage = finalmessage + c(alphabetical[i]);
+                if(i>0){
+                    if(c(alphabetical[i]) !== c(alphabetical[i-1])){ //Prevent duplicates
+                        finalmessage = finalmessage + c(alphabetical[i]);
+                    }
+                }
+                else{
+                    finalmessage = finalmessage + c(alphabetical[i]);
+                }
             }
-
             res(finalmessage);
         });
     });

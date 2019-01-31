@@ -1,9 +1,9 @@
-require('./bot.js');
-require('./rng.js');
+require('../bot.js');
+require('../tools/rng.js');
 const axios = require('axios');
 module.exports = {
     getEmbed: function(input){ 
-        var authwolframalpha = require('./auth-wolframalpha.json');
+        var authwolframalpha = process.env.WOLF_AUTH;
         axios.get('http://api.wolframalpha.com/v2/query?input=' + input + "&appid=" + authwolframalpha.token, {},{
             })
             .then(response =>{ 
