@@ -162,21 +162,11 @@ module.exports = {
             }
             else{
                 message+= "```glsl\n#Server Rich List \n\n"
-
-                var unsorted = true;
-                var counter = 0;
-                while(unsorted){
-                    unsorted = false;
-                    if(counter != result.length){
-                        if(result[counter].credits < result[counter+1].credits){
-                            var temp = result[counter];
-                            result[counter] = result[counter+1];
-                            result[counter+1] = temp;
-                            unsorted = true; 
-                            counter = 0;
-                        }
-                    }
-                }
+                
+                result.sort(function(a, b) { 
+                    return b.credits - a.credits;
+                });                
+                
                 for(i=0;i<result.length;i++){
                     if(i == 0){
                         message+="🏆 "

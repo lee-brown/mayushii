@@ -11,7 +11,8 @@ var schedule = require('node-schedule')
     , serverData = require('./commands/server-data.js') 
     , tools = require('./tools/tools.js')
     , gamble = require('./commands/gambling.js') //Economy/gambling functions
-    , texts = require('./commands/text.js'); //Fancy text functions
+    , texts = require('./commands/text.js') //Fancy text functions
+    , packs = require('./commands/packs.js'); 
 
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -37,7 +38,6 @@ Players = new Object;
 //Mongo variables
 var collectionName 
     , url = "mongodb://localhost:27017/"
-    , voice = require('./tools/voice.js');
 
 bot.on('message', function (user, userID, channelID, message, evt) {
     bot.setPresence({
@@ -191,11 +191,19 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'setcolor' && args[0] !== undefined){//Prefix for !setprefix doesnt change
                 serverData.setImage(args);
             }
-            else if(command === "zarathesadist"){
-                var ztsCommands = require('./zts-commands.json');
-                for(i = 0; i < ztsCommands.cmds.length; i++){
-                    database.insertCMD(collectionName, url,ztsCommands.cmds[i]);
-                }
+
+            //Command packs
+            else if (command === "packs"){
+                packs.lspacks();
+            }
+            else if (command === "delpack"){
+                packs.delpack(collectionName, url, args[0]);
+            }
+            else if(command === "pack"){
+                packs.packinfo(args[0]);
+            }
+            else if(command === "addpack"){
+                packs.addpack(collectionName, url, args[0]);
             }
 
             //Reddit Commands
@@ -259,9 +267,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'newcmd'){
                 serverData.newCmd(collectionName, url, argsString);
             }
-            else if(command === 'newcmdr'){ //<cmd> | <subreddits> | text post / image post
-                serverData.newCmdr(collectionName, url, argsString);
-            }
             else if (command === 'ls-allcmds'){ 
                 const defaultCmds = database.getCmds(collectionName, url,"all"); 
                 defaultCmds.then(function(finalmessage){
@@ -293,14 +298,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === 'upload'){
                 neko.uploadImg(args);
             }
-            else if ((command === "updatecmd-text" || command === "updatecmd-tag"| command === "updatecmd-subr") && argsString.includes("|") && args[0] !== undefined){ //<id> | <tags>
+            else if (command === "updatecmd" && argsString.includes("|") && args[0] !== undefined){ //<id> | <tags>
                 serverData.updateCmd(command, argsString);
-            }
-            else if ((command === "add-tag" || command === "add-text") && argsString.includes("|") && args[0] !== undefined){ // <id> | <item-to-add> 
-                serverData.addCmd(command, argsString);
-            }
-            else if ((command === "del-tag" || command === "del-text") && args[0] !== undefined && args[1] !== undefined){ // <id> <tag/texts-index> 
-                serverData.delTag(command, args);
             }
             else if (command === "cmd-details" && args[0] !== undefined){ //<cmd-id>
                 serverData.cmdDetails(args);
@@ -369,84 +368,6 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                 gamble.addCredits(collectionName, url, args);
             }
 
-            //Voice chat 
-            else if(command === 'join'){
-                if(userVoiceChannelId !== undefined){
-                    bot.joinVoiceChannel(userVoiceChannelId);
-                    if(Players[collectionName] != undefined){
-                        Players[collectionName].currentChannelID = userVoiceChannelId;
-                    }
-                }
-                else{
-                    sendMessage("You must be in the voice channel to make the bot join");
-                }
-            }
-            else if(command == 'leave'){
-                if(userVoiceChannelId !== undefined){
-                    if(Players[collectionName] != undefined){
-                        voice.stop(collectionName);
-                    }
-                    bot.leaveVoiceChannel(userVoiceChannelId);
-                }
-                else{
-                    sendMessage("You must be in the voice channel to make the bot leave");
-                }
-            }
-            else if(command == 'play'){
-                if(userVoiceChannelId !== undefined){
-                    bot.joinVoiceChannel(userVoiceChannelId, function(error, events) {
-                        if(args[0].includes("list=")){   
-                           voice.playlist(args,collectionName,userVoiceChannelId);
-                        }
-                        else if (result.hostname){
-                            voice.url(args,collectionName,userVoiceChannelId);
-                        } 
-                        else{ 
-                            voice.search(argsString,collectionName,userVoiceChannelId);
-                        }
-                    });
-                }
-                else{
-                    sendMessage("You must be in the voice channel to play music");
-                }  
-            }
-            else if(command == 'stop'){
-                voice.stop(collectionName);
-            }
-            else if(command == 'skip'){
-                voice.skip(collectionName);
-            }
-            else if(command == 'moveallhere' && perms.permissions(userID, ['admin', 'power user'])){
-                bot2 = new Discord.Client({
-                    token: auth.token,
-                    autorun: true
-                 });
-                 bot2.on('ready', function(evt){
-                    var status;
-                    if(userVoiceChannelId !== undefined){
-                        for(var propertyName in bot.servers[collectionName].members) {
-                            if(bot2.servers[collectionName].members[propertyName].voice_channel_id !== undefined){
-                                bot.joinVoiceChannel(userVoiceChannelId);
-                                bot.moveUserTo({
-                                    serverID: collectionName,
-                                    userID: propertyName.toString(),
-                                    channelID: userVoiceChannelId,
-                                }, function(err){
-                                    console.log(err.response);
-                                    if(err.response.statusCode == 50013){
-                                        
-                                        status = 50013;
-                                    }
-                                });
-                            }
-                        }
-                    }
-                    if(status == 50013){
-                        sendMessage("I have insufficient privileges to do that");
-                    }
-                })
-            }
-
             //Catch all (Custom cmds)
             else {
                 try{
@@ -458,79 +379,49 @@ bot.on('message', function (user, userID, channelID, message, evt) {
                             number = 0;
                         }
                         else if(result.length > 1){ //Case where there are multiple commands with the same name
-                            var random = Math.floor((Math.random() * result.length));
-                            number = random; //Generate random number here
+                            number = Math.floor((Math.random() * result.length));
                         }
                         if(result[number] !== undefined){
-                            resultCmd = result[number].cmd; //(string) Custom command e.g !test
-                            resultTags = result[number].tags; //(array) Tags which the custom command queries nekobooru with
-                            resultText = result[number].texts; //(array) Text(s) (if multiple, choose one randomly) text to print out along side reaction image
-                            resultSubr = result[number].subreddit;
-                            resultType = result[number].type;
-                            var tagsExists = false; //Check if there are missing values
-                            var textExists = false;
-                            var subrExists = false; //subreddit
-                            var typeExists = false; //subreddit
-                            var resultTextString;
+                            var item = result[number];
                             var resultTagsString = "";
-                            if(resultTags !== null && resultTags !== undefined){
-                                tagsExists = true;
-                                for(i = 0; i < resultTags.length; i++){
-                                    resultTagsString = resultTagsString + resultTags[i];
-                                    if(i !== resultTags.length - 1){
+                            if(item.tags !== null && item.tags !== undefined){
+                                item.tags = item.tags.split("&");
+                                for(i = 0; i < item.tags.length; i++){
+                                    resultTagsString = resultTagsString + item.tags[i];
+                                    if(i !== item.tags.length - 1){
                                         resultTagsString = resultTagsString + ",";
                                     }
                                 }
                             }
-                            if(resultText !== null && resultText !== undefined){
-                                textExists = true;
-                                var random = Math.floor((Math.random() * resultText.length));
-                                var resultTextString = resultText[random];
-                            }
-                            if(resultSubr !== null && resultSubr !== undefined){
-                                subrExists = true;
-                            }
-                            if(resultType !== null && resultType !== undefined){
-                                typeExists = true;
-                            }
-                            if(tagsExists && textExists){
-                                resultTextString = tools.addUserId(resultTextString, args[0], userID); //replace @target and @user
-                                sendMessage(resultTextString);
-                                neko.getRandomImg(resultTagsString);
-                            }
-                            else if(!tagsExists && textExists){
-                                resultTextString = tools.addUserId(resultTextString, args[0], userID);//replace @target and @user
-                                sendMessage(resultTextString);
-                            }
-                            else if(tagsExists && !textExists){
-                                neko.getRandomImg(resultTagsString);
-                            }
-                            else{
-                                if(subrExists && typeExists){
-                                    if(tools.removeSpaces(resultType) === "img"){
-                                        var got = reddit.getHot(resultSubr);
-                                        got.then(function(posts){
-                                            reddit.printImg(posts);
-                                        })
-                                    }
-                                    else if(resultType = "post"){
-                                        
-                                        var got = reddit.getHot(resultSubr);
-                                        got.then(function(posts){
-                                            reddit.printPost(posts);
-                                        })
-                                    }
+                            if(item.cmdsource === "neko"){
+                                if(args[0] !== undefined && item.texts !== undefined){
+                                    var resultTextString = tools.addUserId(item.texts, args[0], userID); //replace @target and @user
+                                    sendMessage(resultTextString);
                                 }
-                                else if (subrExists){
-                                    var got = reddit.getHot(resultSubr);
+                                neko.getRandomImg(resultTagsString);
+                            }
+                            else if (item.cmdsource === "reddit"){
+                                if(item.type === "img"){
+                                    var got = reddit.getHot(item.subreddit);
+                                    got.then(function(posts){
+                                        reddit.printImg(posts);
+                                    })
+                                }
+                                else if(item.type = "post"){
+                                    var got = reddit.getHot(item.subreddit);
                                     got.then(function(posts){
                                         reddit.printPost(posts);
                                     })
                                 }
                                 else{
-                                    neko.getRandomImg(resultCmd);
+                                    console.log("Unexpected item.type: " + item.type);
                                 }
-                                
+                            }
+                            else if(item.cmdsource = "text"){
+                                sendMessage(item.texts[0]);
+                            }
+                            else {
+                                console.log(result[number].cmdsource);
                             }
                         }
                         else{

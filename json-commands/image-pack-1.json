@@ -1,0 +1,17 @@
+{
+    "cmds": [
+        {"cmdsource": "neko", "cmd":"lenny","texts":"( ͡° ͜ʖ ͡°)"},
+        {"cmdsource": "neko", "cmd":"capitalism","tags":"capitalism"},
+        {"cmdsource": "neko", "cmd":"gun","tags":"gun","texts":"Look at what I've got!"},
+        {"cmdsource": "neko", "cmd":"lewd","tags":"lewd"},
+        {"cmdsource": "neko", "cmd":"waifu","tags":"waifu","texts":"Consider the following…"},
+        {"cmdsource": "neko", "cmd":"nyaa","tags":"nyaa","texts":"Nyaa~"},
+        {"cmdsource": "neko", "cmd":"there-was-an-attempt","tags":"there-was-an-attempt"},
+        {"cmdsource": "neko", "cmd":"curious","tags":"curious"},
+        {"cmdsource": "neko", "cmd":"thisisfine","tags":"this-is-fine"},
+        {"cmdsource": "neko", "cmd":"fu","tags":"f-u"},
+        {"cmdsource": "neko", "cmd":"blank-stare","tags":"blank-stare"},
+        {"cmdsource": "neko", "cmd":"disappointed","tags":"disappointed"},
+        {"cmdsource": "neko", "cmd":"bait","tags":"bait","texts":"Begon Bait!"}
+    ]
+}

@@ -1,6 +1,7 @@
 //Create/modify/delete certain objects in the database
 var database = require('../db/db-access.js')
     , tools = require('../tools/tools.js');
+const {ObjectId} = require('mongodb');
 module.exports = {
     setPrefix: function(args){
         args[1] = tools.removeSpaces(args[1]);
@@ -71,7 +72,7 @@ module.exports = {
             const found = database.find(collectionName, url,{}, query);
             found.then(function(result){
                 if(result.length === 0 || result[0].image === undefined){
-                    res("https://nekobooru.xyz/data/posts/18_9f7a09bdc35dfd01.png");
+                    res("https://nekobooru.xyz/data/posts/900_5f4e648619cade93.png");
                 }
                 else{
                     res(result[0].image);
@@ -132,63 +133,67 @@ module.exports = {
         }
     },
     newCmd: function(collectionName, url, argstring){
-        console.log("test");
-        console.log(argstring);
         argstring = argstring.split('|');
-        var tagsArray = undefined;
-        var textArray = undefined;
-        if(argstring[0] !== undefined){
-            argstring[0] = tools.removeSpaces(argstring[0]); //Spaces are only important for text
-        }
-        if(argstring[1] !== undefined){
-            tagsArray = tools.removeSpaces(argstring[1]).split('&'); //Allows for multiple texts or tags to be put in at once
-        }
-        if(argstring[2] !== undefined){
-            textArray = argstring[2].split('&');
-        }
-        thingToPass = {cmd: argstring[0], tags: tagsArray, texts: textArray };
-        console.log(thingToPass);
-        database.insert(collectionName, url, thingToPass); 
-    },
-    newCmdr: function(collectionName, url, argstring){
-        argstring = argstring.split('|');
-        var subreddits = undefined;
-        var type = undefined;
+        var obj = {};
+        
+        // cmdsource,  cmd,  subreddit/tags,  texts/type
         if(argstring[0] !== undefined){
             argstring[0] = tools.removeSpaces(argstring[0]); 
+            obj["cmdsource"] = argstring[0];
+            if(argstring[1] !== undefined){
+                argstring[1] = tools.removeSpaces(argstring[1]); 
+                obj["cmd"] = argstring[1];
+                if(obj["cmdsource"] === "neko"){
+                    if(argstring[2] !== undefined){
+                        obj["tags"] = tools.removeSpaces(argstring[2]).split('&'); 
+                    }
+                    if(argstring[3] !== undefined){
+                        obj["texts"] = argstring[3].split('&');
+                    }
+                }
+                else if (obj["cmdsource"] === "reddit"){
+                    if(argstring[2] !== undefined){
+                        obj["subreddit"] = tools.removeSpaces(argstring[2]); 
+                    }
+                    if(argstring[3] !== undefined){
+                        obj["type"] = argstring[3];
+                    }
+                }
+                else if(obj["cmdsource"] === "text"){
+                    obj["texts"] = argstring[2].split('&');
+                }
+                database.insert(collectionName, url, obj); 
+            }
+            else{
+                sendMessage("Please give a cmd name.");
+            }
         }
-        if(argstring[1] !== undefined){
-            subreddits = tools.removeSpaces(argstring[1]);
+        else{
+            sendMessage("Please add a cmd source (neko/reddit)");
         }
-        if(argstring[2] !== undefined){
-            type = tools.removeSpaces(argstring[2]);
-        }
-        
-        thingToPass = {cmd: argstring[0], subreddit: subreddits, type: type };
-        database.insert(collectionName, url,thingToPass); 
     },
     updateCmd: function(command, argsString){
         try{
-            var id = ObjectId(tools.removeSpaces(args[0]));
-            var query = { _id: id };
             argsString = argsString.split('|');
-            argsString = argsString[1]; //<tags>
+            var id = ObjectId(tools.removeSpaces(argsString[1]));
+            var itemtoupdate = tools.removeSpaces(argsString[0]);
+            var query = { _id: id };
+            argsString = argsString[2]; //<tags>
             var tagsArray = undefined;
             var textArray = undefined;
-            if(argsString !== undefined){
-                var newvalues;
-                if(command === "updatecmd-tag"){
-                    tagsArray = tools.removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
-                    newvalues = { $set: {tags: tagsArray}}; //update tags
-                }
-                else if (command === "updatecmd-text"){
-                    textArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
-                    newvalues = { $set: {texts: textArray}}; //update tags
-                }
-                else if (command === "updatecmd-subr"){
-                    subreddits = tools.removeSpaces(argsString);
-                    newvalues = { $set: {subreddit: subreddits}}; 
-                }
+            var newvalues;
+
+            if(itemtoupdate === "tag"){
+                tagsArray = tools.removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
+                newvalues = { $set: {tags: tagsArray}}; //update tags
+            }
+            else if (itemtoupdate === "text"){
+                textArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
+                newvalues = { $set: {texts: textArray}}; //update tags
+            }
+            else if (itemtoupdate === "subreddit"){
+                subreddits = tools.removeSpaces(argsString);
+                newvalues = { $set: {subreddit: subreddits}}; 
             }
             database.update(query, newvalues);
         }
@@ -197,82 +202,9 @@ module.exports = {
             sendMessage("Invalid id");
         }
     },
-    addTag: function(command, argsString){
-        try{
-            var id = ObjectId(tools.removeSpaces(args[0]));
-            var query = { _id: id };
-            const found = database.find(collectionName, url,query);
-            found.then(function(result){
-                var ogitems;
-                if(command === "add-tag"){
-                    ogitems = result[0].tags;
-                }
-                else{
-                    ogitems = result[0].texts;
-                }
-                argsString = argsString.split('|');
-                argsString = argsString[1]; //<item-to-add>
-                var itemsArray = undefined;
-                if(argsString !== undefined){//Add array of user items
-                    if(command === "add-tag"){
-                        itemsArray = tools.removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
-                    }
-                    else{
-                        itemsArray = argsString.split('&'); //Allows for multiple texts or tags to be put in at once
-                    }
-                }
-                for(i = 0; i < ogitems.length; i++){ //Add array of original items
-                    itemsArray.push(ogitems[i]);
-                }
-                if(command === "add-tag"){
-                    var newvalues = { $set: {tags: itemsArray}}; //update tags
-                }
-                else{
-                    var newvalues = { $set: {texts: itemsArray}}; //update texts
-                }
-                database.update(query, newvalues);
-            });
-        }
-        catch(err)
-        {
-            sendMessage("Invalid id");
-        }
-    },
-    deleteByID: function(id){
-        database.delete(collectionName, url, { _id: ObjectId(tools.removeSpaces(id)) });
-    },
-    delTag: function(command, args){
-        try{
-            var id = ObjectId(tools.removeSpaces(args[0]));
-            var query = { _id: id };
-            var index = tools.removeSpaces(args[1]);
-            const found = database.find(collectionName, url,query);
-            found.then(function(result){
-                if (err) throw err;
-                try{
-                    var newvalues;
-                    if(command === "del-tag"){
-                        arrayToUpdate = result[0].tags;
-                        arrayToUpdate.splice(index, 1); //Remove the user specified element from the array
-                        newvalues = { $set: {tags: arrayToUpdate}}; //update tags
-                    }
-                    else if (command === "del-text"){
-                        arrayToUpdate = result[0].texts;
-                        arrayToUpdate.splice(index, 1); //Remove the user specified element from the array
-                        newvalues = { $set: {texts: arrayToUpdate } }; //update texts
-                    }
-                    database.update(query, newvalues);
-                }
-                catch(err){
-                    sendMessage("You entered an invalid index");
-                }
-                db.close();
-            });
-        }
-        catch(err)
-        {
-            sendMessage("Invalid id");
-        }
+    deleteByID: function(collectionName, url, id){
+        id = ObjectId(id);
+        database.delete(collectionName, url, { _id: id });
     },
     cmdDetails: function(args){
         try {
@@ -309,25 +241,9 @@ module.exports = {
             sendMessage("Invalid id");
         }
     },
-    getPlaylist: function(collectionName, url, playlistID){
-        return new Promise(function(res, rej) {
-            var query =  { playlistid: playlistID} 
-            const found = database.find(collectionName, url, query);
-            found.then(function(result){
-                if(result.length === 0){
-                    res(undefined);
-                }
-                else{
-                    res(result[0].playlist);
-                }
-            });
-        }).catch({code: "An error occured: getPlaylist()"}, function(err) {
-            console.log(err);
-        });
-    },
-    newPlaylist: function(collectionName, url, playlistID, playlist){
-        thingToPass = {playlistid: playlistID, playlist: playlist };
-        database.insert(collectionName, url, thingToPass); 
+    lsCmdNames: function(collectionName, url,packname){
+        var query = { pack: tools.removeSpaces(packname) };
+        return found = database.find(collectionName, url,query);
     },
     lsCmdName: function(collectionName, url,args){
         var query = { cmd: tools.removeSpaces(args[0]) };

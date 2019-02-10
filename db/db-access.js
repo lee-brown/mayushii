@@ -72,82 +72,47 @@ module.exports = {
             });
         });
     },
-    insertCMD: function(collectionName, url, singlecommand){ //Format object for single cmd and insert if not exist (used for seeder files)
-        var tagsArray = undefined;
-        var textArray = undefined;
-        var subreddits = undefined;
-        var type = undefined;
-        if(singlecommand.tags !== undefined){
-            tagsArray = tools.removeSpaces(singlecommand.tags.toString()).split('&'); //Allows for multiple texts or tags to be put in at once
-        }
-        if(singlecommand.texts !== undefined){
-            textArray = singlecommand.texts.toString().split('&'); //Allows for multiple texts or tags to be put in at once
-        }
-        if(singlecommand.subreddit !== undefined){
-            subreddits = singlecommand.subreddit.toString(); //Allows for multiple texts or tags to be put in at once
-        }
-        if(singlecommand.type !== undefined){
-            type = singlecommand.type.toString(); //Allows for multiple texts or tags to be put in at once
-        }
+    insertCMD: function(collectionName, url, singlecommand, packname){ //Format object for single cmd and insert if not exist (used for seeder files)
         var query = { cmd: singlecommand.cmd};
-        var toInsert = { cmd: singlecommand.cmd, tags: tagsArray, texts: textArray, subreddit: subreddits, type: type };
+        var toInsert = singlecommand;
+        if(packname !== undefined){
+            toInsert["pack"] = packname;
+        }
         insertIfNotExist(collectionName, url, query, toInsert); 
     },
     insertUser: function(collectionName, url, userObject){ 
         var query = {  user: userObject.user};
         insertIfNotExist(collectionName, url, query, userObject); 
     },
-    getCmds: function(collectionName, url, typeOfCmd){ //Returns cmd names (typeOfCmd is a string either "custom" or "default" or "all")
+    getPackCmds: function(collectionName, url){ //Returns pack names and their associated cmds [[pack-name, cmd1, cmd2], [pack-name, cmd1, cmd2]...]
     return new Promise(function(res, rej) {
-        const found = find(collectionName, url, {}, { projection: { _id: 0, cmd: 1} });
+        const found = find(collectionName, url, {}, { projection: { _id: 0, cmd: 1, pack: 1} });
         found.then(function(result, err){
-            var defaultCommands = require('../json-commands/default-commands.json');
-            var finalmessage = "";
-            if (err) throw err;
-            var alphabetical = new Array;
-            for(i = 0; i<result.length; i++){   
-                var insert;
-                if(typeOfCmd == "custom"){
-                    insert = true;
-                }
-                if(typeOfCmd == "default"){
-                    insert = false;
-                }
-                if(typeOfCmd == "all"){
-                    insert = true;
-                }
-                for(j = 0; j<defaultCommands.cmds.length; j++){
-                    if(result[i].cmd === defaultCommands.cmds[j].cmd){ //If it's a default cmd
-                        if(typeOfCmd == "default"){
-                            insert = true;
-                            break;
-                        }
-                        if(typeOfCmd == "custom"){
-                            insert = false;
-                            break;
-                        }
-                    }
-                }
-                if(insert){
-                    if(result[i].cmd !== undefined){//Only happens with customcmds
-                        alphabetical.push(result[i].cmd);
-                    }
-                }
+            const fs = require('fs');
+            fs.readdir("./json-commands/", (err, files) => {
+            var lspacks = new Array();
+            if(files !== undefined){
+                files.forEach(file => {
+                    lspacks.push([file.substring(0, (file.length-5))]);
+                });
             }
-            alphabetical.sort();
-            for(i =0;i<alphabetical.length;i++){
-                if(i>0){
-                    if(c(alphabetical[i]) !== c(alphabetical[i-1])){ //Prevent duplicates
-                        finalmessage = finalmessage + c(alphabetical[i]);
+            else{
+                console.log("files not found");
+            }
+            for(i = 0; i < result.length; i++){
+                var index = 0;
+                for(j = 0; j < lspacks.length; j++){
+                    if(result[i].pack === lspacks[j][0]){
+                        index = j;
+                        break;
                     }
                 }
-                else{
-                    finalmessage = finalmessage + c(alphabetical[i]);
-                }
+                lspacks[index].push(result[i].cmd);
             }
-            res(finalmessage);
+            res(lspacks);
         });
     });
+})
 }
 }
 insert = function(collectionName, url, query){ //Inserts one item
@@ -159,7 +124,7 @@ insert = function(collectionName, url, query){ //Inserts one item
           db.close();
         });
     }); 
-},
+}
 insertIfNotExist = function(collectionName, url, query, toInsert){//Function that will only insert if the cmd can't be found in the database 
     return new Promise(function(res, rej) {
         const found = find(collectionName, url, query);

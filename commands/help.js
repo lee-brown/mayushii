@@ -2,52 +2,67 @@
 module.exports = {
     generalHelp: function(collectionName, url, image){
         var database = require('../db/db-access.js');
-        const custcmds = database.getCmds(collectionName, url,"custom");
-        custcmds.then(function(custcmds){//get customcmds
-            var database = require('../db/db-access.js');
-            const defaultcmds = database.getCmds(collectionName, url,"default");
-            defaultcmds.then(function(defaultcmds){//get defaultcmds
+        const custcmds = database.getPackCmds(collectionName, url,"custom");
+        custcmds.then(function(result){//get customcmds
             var richembed = {
-                "title": "Tuturuu~ Here is a list of commands",
-                "description": "Check the other help commands for more features such as !upload and don't forget you can upload reaction images for this bot at nekobooru.xyz",
-                "thumbnail": {
-                    "url": image
-                },
-                "fields": [
-                    {
-                        "name": "Default Image and message commands",
-                        "value": "These commands create a message or image or both. \n" + defaultcmds,
-                        "inline": true
+                    "description": "Check the other help commands for more features such as !upload and don't forget you can upload reaction images for this bot at nekobooru.xyz",
+                    "thumbnail": {
+                        "url": image
                     },
-                    {
-                        "name": "Custom Image and message commands",
-                        "value": "Additional commands can be created from discord chat (check " + c("help-customcmd") + ")\n" + custcmds,
-                        "inline": true},
-                        {
-                        "name": "Fun/useful commands",
-                        "value": c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps") + c("eval") + c("credits") + c("slots") + c("gambleflip") + c("richlist") + c("fancy") + c("spaced") + c("metal")+ c("smallcaps")+ c("upsidedown")+ c("bubble"),
-                        "inline": true
-                    },
-                    {
-                        "name": "Permissions (!add-admin <tagged-user>)",
-                        "value": c("add-admin") + c("add-poweruser"),
-                        "inline": true
-                    },
-                    {
-                        "name": "Other",
-                        "value": c("suggest") + " ``prefix`` "+ " ``!setprefix`` " + c("setcolor") + "(8 digit hex code)" + c("setimage") + "(URL)",
-                        "inline": true
-                    },
-                    {
-                        "name": "Help",
-                        "value":  c("help-text") + c("help-gamble") + c("help-nekobooru") + c("help-customcmd") + c("help-reddit"), 
-                        "inline": true
+                    "fields": []
+                
+            }
+
+            //Pack commands
+            for(i = 0; i < result.length; i++){
+                if(result[i].length > 1){
+                   // console.log(result[i]);
+                   // console.log("\n");
+                    var data = {};
+                    data["name"] = result[i][0]; //pack name
+                    data["value"] = "";
+                    for(j = 1; j< result[i].length; j++){ //Cmds
+                        data["value"] += c(result[i][j]);
                     }
-                ]
+                    data["inline"] = true;
+                    richembed["fields"].push(data);
+                 //   console.log("\n");
+                 //   console.log(data);
                 }
-                sendEmbed(richembed);
-                sendMessage("The help page is dynamically generated, if you customize the bot (new prefix, custom commands etc) you will have to do " + c("help") + "again to get the updated command list");
+                
+            }
+            
+            //Fun
+            richembed["fields"].push({
+                "name": "Fun/useful commands",
+                "value": c("pack") + c("packs") + c("addpacks") + c("delpacks")  + c("rate") + c("flip") + c("say") + c("bigsay") + c("vote") + c("rps") + c("eval") + c("credits") + c("slots") + c("gambleflip") + c("richlist") + c("fancy") + c("spaced") + c("metal")+ c("smallcaps")+ c("upsidedown")+ c("bubble"),
+                "inline": true
             });
+
+            /* -- Considering permenant removal of permissions in help page since it's an admin only tool
+            //Permissions
+            richembed["fields"].push({
+                "name": "Permissions (!add-admin <tagged-user>)",
+                "value": c("add-admin") + c("add-poweruser"),
+                "inline": true
+            });
+            */ 
+
+            //Other commands
+            richembed["fields"].push({
+                "name": "Other",
+                "value": c("suggest") + " ``prefix`` "+ " ``!setprefix`` " + c("setcolor") + "(8 digit hex code)" + c("setimage") + "(URL)",
+                "inline": true
+            });
+
+            //Advanced commands
+            richembed["fields"].push({
+                "name": "Advanced commands",
+                "value":  c("help-text") + c("help-gamble") + c("help-nekobooru") + c("help-customcmd") + c("help-reddit"), 
+                "inline": true
+            }); 
+            sendEmbed(richembed);
+            sendMessage("The help page is dynamically generated, if you customize the bot (new prefix, custom commands etc) you will have to do " + c("help") + "again to get the updated command list");
         });
     },
     customCmdsHelp: function(image){

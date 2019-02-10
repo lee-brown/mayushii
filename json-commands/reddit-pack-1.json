@@ -1,0 +1,18 @@
+{
+    "cmds": [
+        {"cmdsource": "reddit", "cmd":"wsb","subreddit":"wallstreetbets", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"mirl","subreddit":"me_irl", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"animeirl","subreddit":"anime_irl", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"beamazed","subreddit":"BeAmazed", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"interestingasf","subreddit":"interestingasfuck", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"badcode","subreddit":"badcode", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"til","subreddit":"todayilearned"},
+        {"cmdsource": "reddit", "cmd":"natureislit","subreddit":"NatureIsFuckingLit", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"lifeprotips","subreddit":"LifeProTips"},
+        {"cmdsource": "reddit", "cmd":"showerthoughts","subreddit":"showerthoughts"},
+        {"cmdsource": "reddit", "cmd":"gifs","subreddit":"gifs", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"joke","subreddit":"jokes"},
+        {"cmdsource": "reddit", "cmd":"eyebleach","subreddit":"eyebleach", "type": "img"},
+        {"cmdsource": "reddit", "cmd":"dadjoke","subreddit":"dadjokes"}
+    ]
+}
