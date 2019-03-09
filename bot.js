@@ -12,7 +12,13 @@ var schedule = require('node-schedule')
     , tools = require('./tools/tools.js')
     , gamble = require('./commands/gambling.js') //Economy/gambling functions
     , texts = require('./commands/text.js') //Fancy text functions
-    , packs = require('./commands/packs.js'); 
+    , packs = require('./commands/packs.js')
+    , tester = require('./tester');
+
+for (i = 0; i < tester.test.length; i++) {
+    tester.test[i]();
+}
+
 
 // Configure logger settings
 logger.remove(logger.transports.Console);
@@ -39,36 +45,78 @@ Players = new Object;
 var collectionName 
     , url = "mongodb://localhost:27017/"
 
+var tags = {};
+
+var counter = 0;
+var counter2 = 0;
+if(collectionName === undefined){
+    database.getCollections(url).then(function (collections) {
+
+        var collectionNames = [];
+        for(i = 0; i < collections.length; i++){
+            collectionNames.push(collections[0].name);
+        }
+
+        for(i = 0; i < collectionNames.length; i++){
+            const cmdsList = database.getAllCmds(collectionNames[i], url);
+            cmdsList.then(function(result){
+                for(z = 0; z < result.length; z++){
+                    var nekoImages = neko.getRandomImgAll(result[z].tags); 
+                    nekoImages.then(function (nekoData) { //nekoData[0] = cmdName, nekoData[1] = tags[]
+                        if (nekoData[0] !== undefined){
+                            tags[nekoData[0]] = [];
+                            for (j = 0; j < nekoData[1].length; j++){
+                                if (nekoData[1][j] !== undefined){
+                                    tags[nekoData[0]].push(nekoData[1][j].contentUrl);
+                                }
+                            }
+                            tags[nekoData[0]] = tools.shuffle(tags[nekoData[0]]);
+                            counter2++;
+                        }
+                        counter++;
+                        if(counter == result.length){
+                            logger.info(counter2 + " Nekobooru reaction commands successfully cached");
+                        }
+                    })
+                }
+            });
+        }
+    });
+}
+
+var activeServers = [];
+
 bot.on('message', function (user, userID, channelID, message, evt) {
     bot.setPresence({
         idle_since: null,
         game: {name: "!help", type: 0, url: null},
     });
-    if(collectionName == undefined){
-        var serverID = bot.channels[channelID].guild_id;
+    
+    var serverID = bot.channels[channelID].guild_id;
+    if(serverID.toString() !== collectionName){
         collectionName = serverID.toString(); //Each collection named after unique server ID (custom commands are tied to discord servers)
-        
-        //Schedule daily rewards for active users
-        schedule.scheduleJob('0 5 * * *', () => { 
-            gamble.getAllUsers(collectionName, url).then(function(result){
-                gamble.getUser(collectionName, url, result[0].user).then(function(result2){
-                    for(i=0;i<result2.length;i++){
-                        gamble.getUser(collectionName, url, result2[i].user).then(function(result2, err){
-                            if(result2[0].dailyactivity == 1){
-                                gamble.updateActivity(collectionName, url, result2[0]._id , 0);
-                                gamble.addCreditsDirect(collectionName, url, userID, 50);
-                                gamble.updateTotalActivity(collectionName, url, result[0]._id, (result[0].daysofactivity + 1));
-                            }
-                        });
+        if(!activeServers.includes(collectionName)){
+            logger.info("New server active: " + collectionName);
+            //Schedule daily rewards for active users
+            schedule.scheduleJob('0 5 * * *', () => { 
+                gamble.getAllUsers(collectionName, url).then(function(result){
+                    for(i=0;i<result.length;i++){
+                        if(result[i].dailyactivity == 1){
+                            logger.info(result[i]._id + " was active");
+                            gamble.updateActivity(collectionName, url, result[i]._id , 0);
+                            gamble.addCreditsDirect(collectionName, url, result[i]._id, 50);
+                            gamble.updateTotalActivity(collectionName, url, result[0]._id, (result[0].daysofactivity + 1));
+                        }
+                        else{
+                            logger.info(result[i]._id + " was not active");
+                        }
                     }
                 });
-            });
-        }) 
+            }) 
+            activeServers.push(collectionName);
+        }
     }
-    var userVoiceChannelId;
-    if(bot.servers[collectionName].members[userID] !== undefined) {
-        userVoiceChannelId= bot.servers[collectionName].members[userID].voice_channel_id;
-    }
+    
 
     //Tag daily active users as active
     gamble.getUser(collectionName, url, userID).then(function(result, err){
@@ -78,12 +126,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         }
     });
 
-    const prefix = serverData.getPrefix(collectionName, url); 
-    prefix.then(function(prefix){//Get the prefix 
-    const color = serverData.getColor(collectionName, url); 
-    color.then(function(color){//Get the color 
-    const image = serverData.getImage(collectionName, url); 
-    image.then(function(image){//Get the image 
+    
+    serverData.getMetaDataServer(collectionName, url).then(function (metadata) {//Get server metadata 
         sendMessage = function(message){
             bot.sendMessage({
                 to: channelID,
@@ -102,7 +146,7 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             });
         }
         sendEmbed = function(richembed){
-            richembed.color = color;
+            richembed.color = metadata.color;
             bot.sendMessage({
                 to: channelID,
                 embed: richembed
@@ -150,46 +194,43 @@ bot.on('message', function (user, userID, channelID, message, evt) {
         } 
 
         //Insert user if not exists
-        if(user != undefined){
-            if(userID != undefined){
-                database.insertUser(collectionName, url, {dailyactivity: 0, daysofactivity: 0, numberofmessages: 0, user: userID, username: user, credits: 1000});
-            }
+        if(user !== undefined && userID !== undefined){
+            database.insertUser(collectionName, url, {dailyactivity: 0, daysofactivity: 0, numberofmessages: 0, user: userID, username: user, credits: 1000});
+        }
+        else{
+            logger.error("user or userID undefined, try restarting the bot to fix this functionality");
         }
 
         //Get args and format message 
         var args = message.split(' ');
-        var command = args[0].split(prefix)[1];
-        var argsString = message.substring(prefix.length).split(command + " ")[1]; //Full message string without the command
+        var command = args[0].split(metadata.cmdprefix)[1];
+        var argsString = message.substring(metadata.cmdprefix.length).split(command + " ")[1]; //Full message string without the command
 
         c = function(arg){ //Format commands with current prefix
-            var formatted = "``" + prefix + arg + "`` "
-            return formatted;
+            return "``" + metadata.cmdprefix + arg + "`` "
         }
 
         //Special commands that can't be affected by a new prefix (Because they help with recovering the bot in the event of a misconfiguration)
         if(args[0] === '!setprefix' && args[1] !== undefined){//Prefix for !setprefix doesnt change
-            serverData.setPrefix(args);
+            serverData.setMetaData(collectionName, url, args[1], "cmdprefix");
         }
-        else if(args[0] === '!startover' && perms.permissions(userID, ['admin'])){
+        else if (args[0] === '!startover' && perms.permissions(userID, ['admin'])) {
             database.startover(collectionName, url);
         }
         else if(args[0] === '!prefix'){//Get the current prefix
-            const prefix = serverData.getPrefix(collectionName, url);
-            prefix.then(function(prefix){
-                sendMessage("The current prefix is " + "``" + prefix + "``");
-            })
+            sendMessage("The current prefix is " + "``" + metadata.cmdprefix + "``");
         }
 
         //Normal commands
-        else if (args[0] === (prefix + command)) { //If message contains prefix
+        else if (args[0] === (metadata.cmdprefix + command)) { //If message contains prefix
             args.shift(); //Remove cmd from args array
             
             //Customization commands
-            if(command === 'setimage' && args[0] !== undefined){//Prefix for !setprefix doesnt change
-                serverData.setImage(args);
+            if (command === 'setimage' && args[0] !== undefined) {
+                serverData.setMetaData(collectionName, url, args[0], "image");
             }
-            else if(command === 'setcolor' && args[0] !== undefined){//Prefix for !setprefix doesnt change
-                serverData.setImage(args);
+            else if(command === 'setcolor' && args[0] !== undefined){
+                serverData.setMetaData(collectionName, url, args[0], "color");
             }
 
             //Command packs
@@ -230,9 +271,8 @@ bot.on('message', function (user, userID, channelID, message, evt) {
             else if(command === "help-nekobooru"){
                 help.nekoHelp(image);
             }
-            else if(command === 'help')
-            {   
-                help.generalHelp(collectionName, url, image);
+            else if(command === 'help'){   
+                help.generalHelp(collectionName, url, metadata.image);
             }   
 
             //Fun/useful commands
@@ -370,72 +410,69 @@ bot.on('message', function (user, userID, channelID, message, evt) {
 
             //Catch all (Custom cmds)
             else {
-                try{
-                    var query = { cmd: tools.removeSpaces(command) };
-                    const found = database.find(collectionName, url,query);
-                    found.then(function(result){
-                        var number;
-                        if(result.length === 1){
-                            number = 0;
-                        }
-                        else if(result.length > 1){ //Case where there are multiple commands with the same name
-                            number = Math.floor((Math.random() * result.length));
-                        }
-                        if(result[number] !== undefined){
-                            var item = result[number];
-                            var resultTagsString = "";
-                            if(item.tags !== null && item.tags !== undefined){
-                                item.tags = item.tags.split("&");
-                                for(i = 0; i < item.tags.length; i++){
-                                    resultTagsString = resultTagsString + item.tags[i];
-                                    if(i !== item.tags.length - 1){
-                                        resultTagsString = resultTagsString + ",";
-                                    }
-                                }
+                database.find(collectionName, url, { cmd: command.trim() }).then(function(result){
+                    var number = Math.floor((Math.random() * result.length));
+                    if(result[number] !== undefined){
+                        var item = result[number];
+                        //Get tags
+                        resultTagsString = tools.commaDelimitedTags(item.tags);
+
+                        //Handles nekobooru api requests
+                        if(item.cmdsource === "neko"){
+
+                            //Handles text
+                            if(args[0] !== undefined && item.texts !== undefined){
+                                sendMessage(tools.addUserId(item.texts, args[0], userID));
                             }
-                            if(item.cmdsource === "neko"){
-                                if(args[0] !== undefined && item.texts !== undefined){
-                                    var resultTextString = tools.addUserId(item.texts, args[0], userID); //replace @target and @user
-                                    sendMessage(resultTextString);
-                                }
+
+                            //Handles the image (Rich Embed)
+                            if(tags[resultTagsString] !== undefined){ //If cache is available use it, otherwise get image directly from the api
+                                neko.richEmbed(tags[resultTagsString][0]);
+                                tags[resultTagsString].shift();
+
+                                neko.getRandomContentUrl(resultTagsString)
+                                .then(function(response){ //Remove used item and add new random item
+                                    tags[resultTagsString].push(response);
+                                })
+                            }
+                            else{
                                 neko.getRandomImg(resultTagsString);
                             }
-                            else if (item.cmdsource === "reddit"){
-                                if(item.type === "img"){
-                                    var got = reddit.getHot(item.subreddit);
-                                    got.then(function(posts){
-                                        reddit.printImg(posts);
-                                    })
-                                }
-                                else if(item.type = "post"){
-                                    var got = reddit.getHot(item.subreddit);
-                                    got.then(function(posts){
-                                        reddit.printPost(posts);
-                                    })
-                                }
-                                else{
-                                    console.log("Unexpected item.type: " + item.type);
-                                }
+                        }
+
+                        //Handles reddit api requests
+                        else if (item.cmdsource === "reddit"){
+                            if(item.type === "img"){
+                                reddit.getHot(item.subreddit).then(function(posts){
+                                    reddit.printImg(posts);
+                                })
                             }
-                            else if(item.cmdsource = "text"){
-                                sendMessage(item.texts[0]);
+                            else if(item.type = "post"){
+                                reddit.getHot(item.subreddit).then(function(posts){
+                                    reddit.printPost(posts);
+                                })
                             }
-                            else {
-                                console.log(result[number].cmdsource);
+                            else{
+                                logger.error("Unexpected item.type: " + item.type);
                             }
                         }
-                        else{
-                            sendMessage("Command not found or formatted incorrectly, check !help");
+
+                        //Handles simple text requests
+                        else if(item.cmdsource = "text"){
+                            sendMessage(item.texts[0]);
                         }
-                    });
-                }
-                catch(err){
-                    logger.err("Error with catch all")
-                }
+
+                        //Error
+                        else {
+                            logger.error("Unexpected cmdsource: " + item);
+                        }
+                    }
+                    else{
+                        sendMessage("Command not found or formatted incorrectly, check !help");
+                    }
+                });
             }
         }
-    });
-    });
     });
 });
 

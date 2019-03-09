@@ -2,8 +2,8 @@
 module.exports = {
     generalHelp: function(collectionName, url, image){
         var database = require('../db/db-access.js');
-        const custcmds = database.getPackCmds(collectionName, url,"custom");
-        custcmds.then(function(result){//get customcmds
+        const custcmds = database.getPackCmds(collectionName, url);
+        custcmds.then(function (result) {//get customcmds
             var richembed = {
                     "description": "Check the other help commands for more features such as !upload and don't forget you can upload reaction images for this bot at nekobooru.xyz",
                     "thumbnail": {
@@ -16,8 +16,6 @@ module.exports = {
             //Pack commands
             for(i = 0; i < result.length; i++){
                 if(result[i].length > 1){
-                   // console.log(result[i]);
-                   // console.log("\n");
                     var data = {};
                     data["name"] = result[i][0]; //pack name
                     data["value"] = "";
@@ -26,10 +24,7 @@ module.exports = {
                     }
                     data["inline"] = true;
                     richembed["fields"].push(data);
-                 //   console.log("\n");
-                 //   console.log(data);
                 }
-                
             }
             
             //Fun

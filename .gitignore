@@ -3,3 +3,6 @@ node_modules
 auth-nekobooru.json
 auth-wolframalpha.json
 .env
+.vs
+.vscode
+logfile.log

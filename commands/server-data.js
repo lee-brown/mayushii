@@ -1,136 +1,65 @@
 //Create/modify/delete certain objects in the database
-var database = require('../db/db-access.js')
-    , tools = require('../tools/tools.js');
+var database = require('../db/db-access.js');
+var tools = require('../tools/tools');
 const {ObjectId} = require('mongodb');
 module.exports = {
-    setPrefix: function(args){
-        args[1] = tools.removeSpaces(args[1]);
-        var query = { projection: { _id: 1, cmdprefix: 1} }
-        const found = database.find(collectionName, url,{}, query);
-        found.then(function(result){
-            var formattedResult = new Array();
-            for(i=0;i<result.length;i++){
-                if(result[i].cmdprefix !== undefined){
-                    formattedResult.push(result[i]);
-                }
-            }
-            if(formattedResult.length === 0){
-                var query = { cmdprefix: args[1]};
-                database.insert(collectionName, url,query);
-            }
-            else{
-                var id = formattedResult[0]._id;
-                var query = { $set: {cmdprefix: args[1]}};
-                database.update({_id: id}, query);
-            }
-            
-        })
-    },
-    getMetaData: function(collectionName, url){
-        var query = { projection: { _id: 0, cmdprefix: 1} }
-        const found = database.find(collectionName, url, {}, query);
-        found.then(function(result){
-            console.log(result)
-        });
-        
-    },
-    getPrefix: function(collectionName, url){
-        return new Promise(function(res, rej) {
-            var query = { projection: { _id: 0, cmdprefix: 1} }
+    getMetaDataServer: function (collectionName, url) { // Returns the metadata object which contains color,image and prefix
+        return new Promise(function (res, rej) {
+            var query = { projection: { _id: 0, metadata: 1 } }
             const found = database.find(collectionName, url, {}, query);
-            found.then(function(result){
-                if(result.length === 0 || result[0].cmdprefix === undefined){
-                    res("!");
+            found.then(function (metadata) {
+                if (metadata.length > 0) { //If data exists use the first entry
+                    res(metadata[0].metadata);
                 }
-                else{
-                    res(result[0].cmdprefix);
+                else {
+                    res(setNewMetaData(collectionName, url)); 
                 }
             });
-        }).catch({code: "An error occured: getPrefix()"}, function(err) {
+        }).catch({ code: "An error occured: metadata error" }, function (err) {
             console.log(err);
         });
     },
-    getColor: function(collectionName, url){
-        return new Promise(function(res, rej) {
-            var query = { projection: { _id: 0, color: 1} }
-            const found = database.find(collectionName, url,{}, query);
-            found.then(function(result){
-                if(result.length === 0 || result[0].color === undefined){
-                    res("15277667");//default color
+    setMetaData: function (collectionName, url, item, type) {//type is the type of metadata (cmdprefix, image or color)
+        var query = { projection: { _id: 1, metadata: 1 } };
+        database.find(collectionName, url, {}, query).then(function (data) {
+
+            //Get relevant data from search
+            var metadataIndex;
+            for (i = 0; i < data.length; i++) { //find metadata from data (mongo returns many empty _id properties)
+                if (data[i].metadata !== undefined) {
+                    metadataIndex = [i];
+                    break;
                 }
-                else{
-                    res(result[0].color);
+            }
+            var metadata = data[metadataIndex].metadata;
+            metadata[type] = item.trim();
+
+            //Validate the data
+            var isValid = true;
+            if (type === "color") {
+                if (metadata[type].length !== 8) {
+                    sendMessage("The color should be an 8 digit number");
+                    isValid = false;
                 }
-            });
-        }).catch({code: "An error occured: getColor()"}, function(err) {
-            console.log(err);
+                else {
+                    sendMessage("Color has been updated to " + metadata[type]); // todo: change this to richembed?
+                }
+            }
+            else if (type === "cmdprefix") {
+                sendMessage("Prefix has been updated to " + "``" + metadata[type] + "``")
+            }
+            else if (type === "image") {
+                if (!tools.isURL(metadata[type])) {
+                    sendMessage("Please enter a valid URL to get the image from");
+                    isValid = false;
+                }
+            }
+
+            //Update the db
+            if (isValid) {
+                database.update(collectionName, url, { _id: data[metadataIndex]._id }, { $set: { metadata: metadata } });
+            }
         });
-    },
-    getImage: function(collectionName, url){
-        return new Promise(function(res, rej) {
-            var query = { projection: { _id: 0, image: 1} }
-            const found = database.find(collectionName, url,{}, query);
-            found.then(function(result){
-                if(result.length === 0 || result[0].image === undefined){
-                    res("https://nekobooru.xyz/data/posts/900_5f4e648619cade93.png");
-                }
-                else{
-                    res(result[0].image);
-                }
-            });
-        }).catch({code: "An error occured: getPrefix()"}, function(err) {
-            console.log(err);
-        });
-    },
-    setImage: function(args){
-        args[0] = tools.removeSpaces(args[0]);
-        var query = { projection: { _id: 1, image: 1} }
-        const found = database.find(collectionName, url,{}, query);
-        found.then(function(result){
-            var formattedResult = new Array();
-            for(i=0;i<result.length;i++){
-                if(result[i].image !== undefined){
-                    formattedResult.push(result[i]);
-                }
-            }
-            if(formattedResult.length === 0){
-                var query = { image: args[0]};
-                database.insert(collectionName, url,query);
-            }
-            else{
-                var id = formattedResult[0]._id;
-                var query = { $set: {image: args[0]}};
-                database.update({_id: id}, query);
-            }
-        })
-    },
-    setColor: function(args){
-        args[0] = tools.removeSpaces(args[0]);
-        var query = { projection: { _id: 1, color: 1} }
-        if(args[0].length === 8){
-            const found = database.find(collectionName, url,{}, query);
-            found.then(function(result){
-                var formattedResult = new Array();
-                for(i=0;i<result.length;i++){
-                    if(result[i].color !== undefined){
-                        formattedResult.push(result[i]);
-                    }
-                }
-                if(formattedResult.length === 0){
-                    var query = { color: args[0]};
-                    database.insert(collectionName, url,query);
-                }
-                else{
-                    var id = formattedResult[0]._id;
-                    var query = { $set: {color: args[0]}};
-                    database.update({_id: id}, query);
-                }
-                
-            })
-        }
-        else{
-            sendMessage("Color is a 8 digit number");
-        }
     },
     newCmd: function(collectionName, url, argstring){
         argstring = argstring.split('|');
@@ -138,14 +67,14 @@ module.exports = {
         
         // cmdsource,  cmd,  subreddit/tags,  texts/type
         if(argstring[0] !== undefined){
-            argstring[0] = tools.removeSpaces(argstring[0]); 
+            argstring[0] = argstring[0].trim(); 
             obj["cmdsource"] = argstring[0];
             if(argstring[1] !== undefined){
-                argstring[1] = tools.removeSpaces(argstring[1]); 
+                argstring[1] = argstring[1].trim(); 
                 obj["cmd"] = argstring[1];
                 if(obj["cmdsource"] === "neko"){
                     if(argstring[2] !== undefined){
-                        obj["tags"] = tools.removeSpaces(argstring[2]).split('&'); 
+                        obj["tags"] = argstring[2].trim().split('&'); 
                     }
                     if(argstring[3] !== undefined){
                         obj["texts"] = argstring[3].split('&');
@@ -153,7 +82,7 @@ module.exports = {
                 }
                 else if (obj["cmdsource"] === "reddit"){
                     if(argstring[2] !== undefined){
-                        obj["subreddit"] = tools.removeSpaces(argstring[2]); 
+                        obj["subreddit"] = argstring[2].trim(); 
                     }
                     if(argstring[3] !== undefined){
                         obj["type"] = argstring[3];
@@ -175,8 +104,8 @@ module.exports = {
     updateCmd: function(command, argsString){
         try{
             argsString = argsString.split('|');
-            var id = ObjectId(tools.removeSpaces(argsString[1]));
-            var itemtoupdate = tools.removeSpaces(argsString[0]);
+            var id = ObjectId(argsString[1].trim());
+            var itemtoupdate = argsString[0].trim();
             var query = { _id: id };
             argsString = argsString[2]; //<tags>
             var tagsArray = undefined;
@@ -184,7 +113,7 @@ module.exports = {
             var newvalues;
 
             if(itemtoupdate === "tag"){
-                tagsArray = tools.removeSpaces(argsString).split('&'); //Allows for multiple texts or tags to be put in at once
+                tagsArray = argsString.trim().split('&'); //Allows for multiple texts or tags to be put in at once
                 newvalues = { $set: {tags: tagsArray}}; //update tags
             }
             else if (itemtoupdate === "text"){
@@ -192,7 +121,7 @@ module.exports = {
                 newvalues = { $set: {texts: textArray}}; //update tags
             }
             else if (itemtoupdate === "subreddit"){
-                subreddits = tools.removeSpaces(argsString);
+                subreddits = argsString.trim();
                 newvalues = { $set: {subreddit: subreddits}}; 
             }
             database.update(query, newvalues);
@@ -208,7 +137,7 @@ module.exports = {
     },
     cmdDetails: function(args){
         try {
-            var id = ObjectId(tools.removeSpaces(args[0]));
+            var id = ObjectId(args[0].trim());
             var query = { "_id" : id };
             const found = database.find(collectionName, url,query);
             found.then(function(result){
@@ -242,11 +171,11 @@ module.exports = {
         }
     },
     lsCmdNames: function(collectionName, url,packname){
-        var query = { pack: tools.removeSpaces(packname) };
+        var query = { pack: packname.trim() };
         return found = database.find(collectionName, url,query);
     },
     lsCmdName: function(collectionName, url,args){
-        var query = { cmd: tools.removeSpaces(args[0]) };
+        var query = { cmd: args[0].trim() };
         const found = database.find(collectionName, url,query);
         found.then(function(result){
             for(i = 0; i < result.length; i++){   
@@ -289,4 +218,15 @@ module.exports = {
             }
         });
     }
+}
+
+function setNewMetaData(collectionName, url) { //Create default metadata in db if it doesnt exist already and returns a default metadata
+    var metadataObj = {
+        color: "15277667",
+        cmdprefix: "!",
+        image: "https://nekobooru.xyz/data/posts/900_5f4e648619cade93.png"
+    }
+    var query = { metadata: metadataObj }
+    database.insert(collectionName, url, query);
+    return metadataObj;
 }

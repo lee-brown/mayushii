@@ -14,7 +14,6 @@ A customizable and feature rich discord bot
   * If there are multiple commands with the same name, a random one will be chosen
 * Customization and custom commands are all tied to your personal discord server
 * Basic permissions system
-* Music player (using YouTube)
 * Economy/credits system with daily rewards and gambling (with credits)
 * Dynamically generated help command
 * Easily add many commands to the bot using .JSON files (see default-commands.json) (only for the admin of the bot for now)

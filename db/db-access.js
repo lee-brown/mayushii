@@ -1,7 +1,7 @@
 var mongo = require('mongodb');
 var Promise = require("bluebird");
 var MongoClient = mongo.MongoClient;
-var tools = require('../tools/tools.js');
+
 module.exports = {
     initial: function(collectionName, url){
         MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
@@ -52,22 +52,11 @@ module.exports = {
             });
         }); 
     },
-    startover: function(collectionName, url){
+    startover: function (collectionName, url) {
         MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
-            if (err) throw err;
             var dbo = db.db("mayushii");
             dbo.collection(collectionName).drop(function(err, delOK) {
-                if (err) throw err;
-                if (delOK) console.log("Collection deleted");
-                db.close();
-            });
-        });
-        MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
-            if (err) throw err;
-            var dbo = db.db("mayushii");
-            dbo.collection("playlists").drop(function(err, delOK) {
-                if (err) throw err;
-                if (delOK) console.log("Collection deleted");
+                if (delOK) console.log("Warning: Collection deleted for Discord server ID: " + collectionName);
                 db.close();
             });
         });
@@ -83,6 +72,28 @@ module.exports = {
     insertUser: function(collectionName, url, userObject){ 
         var query = {  user: userObject.user};
         insertIfNotExist(collectionName, url, query, userObject); 
+    },
+    getAllCmds: function(collectionName, url){ //Returns pack names and their associated cmds [[pack-name, cmd1, cmd2], [pack-name, cmd1, cmd2]...]
+        return new Promise(function(res, rej) {
+            const found = find(collectionName, url, {}, { projection: { _id: 0, tags: 1} });
+            found.then(function(result, err){
+                res(result);
+            });
+    })
+    },
+    getCollections: function(url){
+        return new Promise(function(res, rej) {
+            MongoClient.connect(url,{ useNewUrlParser: true }, function(err, db) {
+                if (err) throw err;
+                var dbo = db.db("mayushii");
+                dbo.listCollections().toArray(function(err, collInfos) {
+                    res(collInfos);
+                });
+            })
+        }).catch({code: "An error occured: find()"}, function(err) {
+            console.log(err);
+        });
+        
     },
     getPackCmds: function(collectionName, url){ //Returns pack names and their associated cmds [[pack-name, cmd1, cmd2], [pack-name, cmd1, cmd2]...]
     return new Promise(function(res, rej) {

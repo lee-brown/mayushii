@@ -1,13 +1,22 @@
-
-var tools = require('../tools/tools');
 require('../tools/rng');
 const axios = require('axios');
 module.exports = {
+    richEmbed: function (contentUrl){ 
+        var richembed = {
+            'footer': {
+                'icon_url': "https://nekobooru.xyz/img/favicon.png",
+                'text': 'nekobooru.xyz'
+            },
+            'image': {
+                'url': "https://nekobooru.xyz/" +  contentUrl
+            }
+        };
+        sendEmbed(richembed);
+    },
     getRandomImg: function (tags){ 
         axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + "&safety=safe", {},{
             })
             .then(response =>{ 
-                console.log(tags);
                 if(response.data.results[0] !== undefined){ //No results returned
                     var randomNo = genRandomNumber(0, response.data.results.length - 1);
                     randomNo.then(function(number){
@@ -25,17 +34,44 @@ module.exports = {
                 }
                 else{
                     sendMessage("Sorry but that tag doesn't exist on nekobooru.xyz, feel free to create it");
-                    console.log(response.data.results[0]);
-                    console.log(response.data.results);
+                    logger.info("Attempted to get neko image with following tags " + tags);
                 }
+                
             })
             .catch(err =>{
                 sendMessage("Tuturuu~ An error occured: " + err.response.data.description);
             });
     },
+    getRandomImgAll: function (tags){ 
+        return new Promise(function(res, rej) {
+            axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + "&safety=safe", {},{
+            })
+            .then(response =>{ 
+                res([tags,response.data.results]);
+            })
+            .catch(err =>{
+                sendMessage("Tuturuu~ An error occured: " + err.response.data.description);
+            });
+        })
+        
+    },
+    getRandomContentUrl: function (tags){ 
+        return new Promise(function(res, rej) {
+            axios.get('https://nekobooru.xyz/api/posts/?query=' + tags + "&safety=safe", {},{
+            })
+            .then(response =>{ 
+                var randomNo = genRandomNumber(0, response.data.results.length - 1);
+                    randomNo.then(function(number){
+                        res(response.data.results[number].contentUrl);
+                    })
+                
+            })
+        })
+        
+    },
     uploadImg: function(args){
         var extensionType = "image";
-        var extension = tools.removeSpaces(args[0].slice(-3));
+        var extension = args[0].slice(-3).trim();
         var extensions = ["png","jpg","tif","jpeg","tiff"];
         if(extension === "gif"){
             extensionType = "animation";
